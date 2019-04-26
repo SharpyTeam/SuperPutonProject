@@ -1,4 +1,3 @@
-progressbar
 requests
 lxml
 beautifulsoup4
