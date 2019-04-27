@@ -120,5 +120,6 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-data/
+data/tmp/
+data/data.db
 

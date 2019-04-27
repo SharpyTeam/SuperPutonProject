@@ -5,6 +5,7 @@ import progressbar as pb
 import src.api.dl as d
 import src.api.parsing as p
 import src.api.utils as u
+import src.config as c
 
 archives_pb = None
 archives_pb_widgets = [
@@ -15,11 +16,19 @@ archives_pb_widgets = [
         'Загружается файл %(value)d/%(max_value)d...')
 ]
 
+is_unpacking = False
+actual_pb_unpacker = None
+actual_pb_unpacker_widgets = [
+    'Распаковываем архив: ',
+    ' ', pb.AnimatedMarker(),
+]
 
-def actual_data_dl_callback(bytes, file_name, counter, total):
-    # print(str(bytes) + " downloaded. File " + str(counter)
-    #      + "/" + str(total) + " - " + file_name)
-    pass
+actual_pb = None
+actual_pb_widgets = [
+    ' Загружается архив: ',
+    ' | ', pb.DataSize(unit='Б', prefixes=('', 'К', 'М', 'Г', 'Т', 'П', 'Э', 'З', 'И')),
+    ' '
+]
 
 
 def archives_data_dl_callback(bytes, current_file, done, total):
@@ -29,8 +38,51 @@ def archives_data_dl_callback(bytes, current_file, done, total):
     archives_pb.update(done)
 
 
-print('Скачиваем архивные данные: ')
-d.dl_archive_files(p.parse_annual_page(d.get_page('http://cbr.ru/finmarket/fcsm/publication/insurers/2017-12-31/')),
-                   u.make_tmp_abs_path(os.path.dirname(__file__)), archives_data_dl_callback)
+def actual_data_dl_callback(bytes, current_file, done, total, unpacking):
+    global actual_pb, is_unpacking, actual_pb_unpacker
+    if not unpacking:
+        if actual_pb is None:
+            actual_pb = pb.ProgressBar(widgets=actual_pb_widgets).start()
+        actual_pb.update(bytes)
+    else:
+        if not is_unpacking:
+            actual_pb.finish()
+            is_unpacking = True
+            print("\nАрхив скачался.")
+            actual_pb_unpacker = pb.ProgressBar(widgets=actual_pb_widgets,
+                                                max_value=total).start()
+        else:
+            actual_pb_unpacker.update(done)
 
-archives_pb.finish()
+
+print("-= Выберите действие =-")
+print("1. Скачать актуальные данные")
+print("2. Скачать архивные данные")
+if input().startswith('1'):
+    u.cleanup_tmp(os.path.dirname(__file__))
+    page = d.get_relevant_page()
+    print("Скачиваются архивные данные за %s год" % p.parse_relevant_year(page))
+    d.dl_relevant_archive(p.parse_relevant_page(page),
+                          u.get_tmp_abs_path(os.path.dirname(__file__)),
+                          actual_data_dl_callback)
+    actual_pb_unpacker.finish()
+    actual_pb.finish()
+
+
+else:
+    periods = p.parse_archives(d.get_page(c.ARCHIVES_PAGE_URL))
+    print("Выберите период:")
+    for i in range(len(periods)):
+        print("%d. I квартал %s" % (i + 1, periods[i][0]))
+    sel = int(input())
+    period = periods[sel - 1] if 0 <= sel <= len(periods) else periods[0]
+    print("Выбран I квартал %s" % period[0])
+    print("URL: %s" % period[1])
+
+    u.cleanup_tmp(os.path.dirname(__file__))
+    print('Скачиваются архивные данные: ')
+    d.dl_archive_files(p.parse_annual_page(d.get_page(period[1])),
+                       u.get_tmp_abs_path(os.path.dirname(__file__)), archives_data_dl_callback)
+    archives_pb.finish()
+
+print("Готово!")

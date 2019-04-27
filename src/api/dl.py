@@ -16,7 +16,16 @@ def dl_relevant_archive(url, dir, callback):
             dl += len(data)
             f.write(data)
             if callback is not None:
-                callback(dl, config.RELEVANT_ZIP_NAME, 0)
+                callback(dl, config.RELEVANT_ZIP_NAME, 0, 0, False)
+
+    if callback is not None:
+        callback(0, config.RELEVANT_ZIP_NAME, 0, 0, True)
+
+    zipf = zipfile.ZipFile(file_path, 'r')
+    files = zipf.namelist()
+    zipf.extractall(dir)
+    zipf.close()
+    return
 
 
 def dl_archive_files(entries, dir, callback):
@@ -36,8 +45,7 @@ def dl_archive_files(entries, dir, callback):
 
 
 def get_relevant_page():
-    r = requests.get(config.RELEVANT_DATA_URL)
-    return r.text if r.ok else None
+    return get_page(config.RELEVANT_PAGE_URL)
 
 
 def get_page(url):

@@ -5,8 +5,9 @@ from src import config
 
 def parse_archives(archives_page):
     doc = Bs(archives_page, 'lxml')
-    a_list = doc.select(config.ARCHIVES_URLS_SELECTOR)
-    return list(map(lambda a: config.MAIN_URL + a['href'], a_list))
+    a_list = doc.select(config.ARCHIVES_PAGES_URLS_SELECTOR)
+    year_list = [str(e.string) for e in doc.select(config.ARCHIVES_YEARS_SELECTOR)]
+    return list(zip(year_list, list(map(lambda a: config.MAIN_URL + a['href'], a_list))))
 
 
 def parse_relevant_page(relevant_page):
