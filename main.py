@@ -6,6 +6,9 @@ import src.api.dl as d
 import src.api.parsing as p
 import src.api.utils as u
 import src.config as c
+import src.api.runtime as runtime
+
+runtime.Runtime.init(__file__)
 
 archives_pb = None
 archives_pb_widgets = [
@@ -59,11 +62,11 @@ print("-= Выберите действие =-")
 print("1. Скачать актуальные данные")
 print("2. Скачать архивные данные")
 if input().startswith('1'):
-    u.cleanup_tmp(os.path.dirname(__file__))
+    u.cleanup_tmp()
     page = d.get_relevant_page()
     print("Скачиваются архивные данные за %s год" % p.parse_relevant_year(page))
     d.dl_relevant_archive(p.parse_relevant_page(page),
-                          u.get_tmp_abs_path(os.path.dirname(__file__)),
+                          u.get_tmp_abs_path(),
                           actual_data_dl_callback)
     actual_pb_unpacker.finish()
     actual_pb.finish()
@@ -79,10 +82,10 @@ else:
     print("Выбран I квартал %s" % period[0])
     print("URL: %s" % period[1])
 
-    u.cleanup_tmp(os.path.dirname(__file__))
+    u.cleanup_tmp()
     print('Скачиваются архивные данные: ')
     d.dl_archive_files(p.parse_annual_page(d.get_page(period[1])),
-                       u.get_tmp_abs_path(os.path.dirname(__file__)), archives_data_dl_callback)
+                       u.get_tmp_abs_path(), archives_data_dl_callback)
     archives_pb.finish()
 
 print("Готово!")

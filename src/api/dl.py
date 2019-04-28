@@ -5,6 +5,7 @@ import zipfile
 import requests
 
 from src import config
+from src.api.runtime import Runtime
 
 
 def dl_relevant_archive(url, dir, callback):
@@ -25,7 +26,7 @@ def dl_relevant_archive(url, dir, callback):
     files = zipf.namelist()
     zipf.extractall(dir)
     zipf.close()
-    return
+    return [os.path.join(Runtime.get_app_path(), dir, f) for f in files]
 
 
 def dl_archive_files(entries, dir, callback):
