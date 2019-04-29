@@ -2,7 +2,7 @@ import os
 
 import progressbar as pb
 
-import src.api.dl as d
+import src.api.web as d
 import src.api.parsing as p
 import src.api.utils as u
 import src.config as c
@@ -62,12 +62,9 @@ print("-= Выберите действие =-")
 print("1. Скачать актуальные данные")
 print("2. Скачать архивные данные")
 if input().startswith('1'):
-    u.cleanup_tmp()
-    page = d.get_relevant_page()
-    print("Скачиваются архивные данные за %s год" % p.parse_relevant_year(page))
-    d.dl_relevant_archive(p.parse_relevant_page(page),
-                          u.get_tmp_abs_path(),
-                          actual_data_dl_callback)
+    u.clean_tmp()
+    print("Скачиваются архивные данные")
+    d.get_relevant_data(lambda x, y, z: print(x, y, z))
     actual_pb_unpacker.finish()
     actual_pb.finish()
 
