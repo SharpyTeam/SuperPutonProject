@@ -10,7 +10,7 @@ def parse_archives(archives_page):
     return list(zip(year_list, list(map(lambda a: config.MAIN_URL + a['href'], a_list))))
 
 
-def parse_relevant_page(relevant_page):
+def get_relevant_archive_link(relevant_page):
     doc = Bs(relevant_page, 'lxml')
     a = doc.select_one(config.RELEVANT_DATA_URL_SELECTOR)
     return config.MAIN_URL + a['href']
