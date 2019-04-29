@@ -7,6 +7,7 @@ import src.api.parsing as p
 import src.api.utils as u
 import src.config as c
 import src.api.runtime as runtime
+from src.ui.gui.archives_app import ArchivesApp
 
 runtime.Runtime.init(__file__)
 
@@ -61,7 +62,9 @@ def actual_data_dl_callback(bytes, current_file, done, total, unpacking):
 print("-= Выберите действие =-")
 print("1. Скачать актуальные данные")
 print("2. Скачать архивные данные")
-if input().startswith('1'):
+print("3. Тест PyQt5")
+i = input()
+if i.startswith('1'):
     u.cleanup_tmp()
     page = d.get_relevant_page()
     print("Скачиваются архивные данные за %s год" % p.parse_relevant_year(page))
@@ -72,7 +75,7 @@ if input().startswith('1'):
     actual_pb.finish()
 
 
-else:
+elif i.startswith('2'):
     periods = p.parse_archives(d.get_page(c.ARCHIVES_PAGE_URL))
     print("Выберите период:")
     for i in range(len(periods)):
@@ -87,5 +90,7 @@ else:
     d.dl_archive_files(p.parse_annual_page(d.get_page(period[1])),
                        u.get_tmp_abs_path(), archives_data_dl_callback)
     archives_pb.finish()
+else:
+    ArchivesApp.run()
 
 print("Готово!")
