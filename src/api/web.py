@@ -2,7 +2,7 @@ import os
 import zipfile
 import requests
 import re
-from typing import Callable, List
+from typing import Callable, List, Dict
 from enum import Enum
 
 from . import utils, parsing
@@ -17,17 +17,18 @@ class DataGetStatus(Enum):
     FINISHED = 4
 
 
-def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None]) -> List[Company]:
+def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None]) -> Dict[str, List[Company]]:
     """
 
     :param callback: (status, progress, total)
     :return:
     """
+    relevant_page = get_relevant_page()
     companies = []
     file_path = os.path.join(utils.get_tmp_path(), config.RELEVANT_ZIP_NAME)
 
     with open(file_path, "wb") as f:
-        with requests.get(parsing.get_relevant_archive_link(get_relevant_page()), stream=True) as r:
+        with requests.get(parsing.get_relevant_archive_link(relevant_page), stream=True) as r:
             r.raise_for_status()
             data_length = 0
             if callback is not None:
@@ -58,28 +59,51 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None]) -
         callback(DataGetStatus.FINISHED, 0, 0)
 
     zf.close()
-    print([x.index for x in companies])
-    return companies
+    return dict([(parsing.get_relevant_year(relevant_page), companies)])
 
 
-def dl_archive_files(entries, dir, callback):
-    file_c = 1
-    for c_id, url in entries:
-        response = requests.get(url, stream=True)
-        file_name = "kstat_" + c_id + ".xls"
-        file_path = os.path.join(dir, file_name)
-        with open(file_path, "wb") as f:
-            dl = 0
-            for data in response.iter_content(chunk_size=4096):
-                dl += len(data)
-                f.write(data)
-                if callback is not None:
-                    callback(dl, file_name, file_c, len(entries))
-        file_c += 1
+def get_archive_data(callback: Callable[[DataGetStatus, float, float, str], None]) -> Dict[str, List[Company]]:
+    return_data = {}
+    years_links = parsing.get_archive_years_links(get_archives_page())
+    for year, year_link in years_links.items():
+        return_data[year] = []
+        xls_links = parsing.get_archive_companies_xls_links(get_page(year_link))
+
+        if callback is not None:
+            callback(DataGetStatus.STARTED, 0, 0, year)
+
+        files_count = 0
+
+        folder_path = os.path.join(utils.get_tmp_path(), 'archive', str(year))
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        for c_id, xls_link in xls_links.items():
+            response = requests.get(xls_link, stream=True)
+            file_name = "kstat_" + c_id + ".xls"
+            file_path = os.path.join(folder_path, file_name)
+            with open(file_path, "wb") as f:
+                for data in response.iter_content(chunk_size=4096):
+                    f.write(data)
+            return_data[year].append(Company(c_id, ''))
+            # TODO parse xls and add it to company here
+            files_count += 1
+            if callback is not None:
+                callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))
+
+        if callback is not None:
+            callback(DataGetStatus.FINISHED, 0, 0, str(year))
+
+    print(data)
+    return data
 
 
 def get_relevant_page() -> str:
     return get_page(config.RELEVANT_PAGE_URL)
+
+
+def get_archives_page() -> str:
+    return get_page(config.ARCHIVES_PAGE_URL)
 
 
 def get_page(url: str) -> str:
