@@ -66,7 +66,7 @@ print("3. Тест PyQt5")
 i = input()
 if i.startswith('1'):
     u.clean_tmp()
-    print("Скачиваются архивные данные")
+    print("Скачиваются актуальные данные")
     d.get_relevant_data(lambda x, y, z: print(x, y, z))
     actual_pb_unpacker.finish()
     actual_pb.finish()
