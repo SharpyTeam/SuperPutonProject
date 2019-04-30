@@ -7,6 +7,8 @@ import src.api.parsing as p
 import src.api.utils as u
 import src.config as c
 
+from src.ui.gui.archives_app import ArchivesApp
+
 # TODO move all to main function
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -61,18 +63,20 @@ def actual_data_dl_callback(bytes, current_file, done, total, unpacking):
 print("-= Выберите действие =-")
 print("1. Скачать актуальные данные")
 print("2. Скачать архивные данные")
-if input().startswith('1'):
+print("3. Тест PyQt5")
+i = input()
+if i.startswith('1'):
     u.clean_tmp()
     print("Скачиваются актуальные данные")
     d.get_relevant_data(lambda x, y, z: print(x, y, z))
     actual_pb_unpacker.finish()
     actual_pb.finish()
-
-
-else:
+elif i.startswith('2'):
     u.clean_tmp()
     print('Скачиваются архивные данные: ')
     d.get_archive_data(lambda x, y, z, w: print(x, y, z, w))
     archives_pb.finish()
+else:
+    ArchivesApp.run()
 
 print("Готово!")
