@@ -3,3 +3,5 @@ lxml
 beautifulsoup4
 progressbar2
 PyQt5
+pandas
+xlrd

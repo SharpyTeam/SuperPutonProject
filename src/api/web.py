@@ -50,8 +50,10 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None]) -
     for file in zf.infolist():
         extracted_size += file.file_size
         p = zf.extract(file, os.path.join(utils.get_tmp_path(), ''.join(config.RELEVANT_ZIP_NAME.split('.')[:-1])))
-        companies.append(Company(int(re.search(r'(?<=_)[0-9]*(?=(.xlsx?))', p).group(0)), ''))
-        # TODO parse xls and add it to company here
+        company = Company(int(re.search(r'(?<=_)[0-9]*(?=(.xlsx?))', p).group(0)), '')
+        companies.append(company)
+        # TODO maybe store only xls path and parse all after (for 'parsing' progress maybe?)
+        company.data_table = parsing.get_data_frame_from_xls(p)
         if callback is not None:
             callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
 
@@ -85,8 +87,10 @@ def get_archive_data(callback: Callable[[DataGetStatus, float, float, str], None
             with open(file_path, "wb") as f:
                 for data in response.iter_content(chunk_size=4096):
                     f.write(data)
-            return_data[year].append(Company(c_id, ''))
-            # TODO parse xls and add it to company here
+            company = Company(c_id, '')
+            return_data[year].append(company)
+            # TODO maybe store only xls path and parse all after (for 'parsing' progress maybe?)
+            company.data_table = parsing.get_data_frame_from_xls(file_path)
             files_count += 1
             if callback is not None:
                 callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))
