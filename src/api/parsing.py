@@ -3,6 +3,7 @@ from typing import Dict, Optional
 
 import math
 import pandas as p
+import xlrd
 from bs4 import BeautifulSoup as Bs
 
 from src import config
@@ -60,12 +61,12 @@ table_columns_mappings = {
 def get_data_frame_from_xls(path: str) -> Optional[p.DataFrame]:
     try:
         # 2016 or 2018 format
-        frame = p.read_excel(path, header=None, verbose=True, sheet_name="Раздел 1")
-    except (IndexError, ValueError, OverflowError):
+        frame = p.read_excel(path, header=None, sheet_name="Раздел 1")
+    except (IndexError, ValueError, OverflowError, xlrd.XLRDError):
         try:
             # 2014 format
-            frame = p.read_excel(path, header=None, verbose=True, sheet_name="1C-1")
-        except (IndexError, ValueError, OverflowError):
+            frame = p.read_excel(path, header=None, sheet_name="1C-1")
+        except (IndexError, ValueError, OverflowError, xlrd.XLRDError):
             # unknown data
             return None
 

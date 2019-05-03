@@ -39,9 +39,11 @@ def create_db():
 def create_missing():
     if not path.exists(get_db_path()):
         create_db()
+    os.makedirs(get_tmp_path(), exist_ok=True)
 
 
 def clean_tmp():
+    create_missing()
     tmp_dir = get_tmp_path()
     for the_file in os.listdir(tmp_dir):
         file_path = os.path.join(tmp_dir, the_file)

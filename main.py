@@ -6,8 +6,6 @@ import src.api.utils as u
 import src.api.web as d
 from src.ui.gui.archives_app import ArchivesApp
 
-# TODO move all to main function
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 bar = None
 archives_pb_widgets = [
@@ -75,26 +73,34 @@ def actual_data_dl_callback(status: d.DataGetStatus, done: float, total: float):
         bar.finish()
 
 
-print("-= Выберите действие =-")
-print("1. Скачать актуальные данные")
-print("2. Скачать архивные данные")
-print("3. Актуальные данные (GUI)")
-print("4. Архивные данные (GUI)")
-print("5. Работа с БД (GUI)")
-i = input()
-if i.startswith('1'):
-    u.clean_tmp()
-    print("Скачиваются актуальные данные")
-    d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z))
-elif i.startswith('2'):
-    u.clean_tmp()
-    print('Скачиваются архивные данные: ')
-    d.get_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w))
-elif i.startswith('3'):
-    raise NotImplementedError("GUI для скачивания актуальных данных ещё не реализован")
-elif i.startswith('4'):
-    ArchivesApp.run()
-else:
-    raise NotImplementedError("GUI для просмотра/изменения/обработки данных в БД ещё не реализован")
+def main():
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-print("Готово!")
+    print("-= Выберите действие =-")
+    print("1. Скачать актуальные данные")
+    print("2. Скачать архивные данные")
+    print("3. Актуальные данные (GUI)")
+    print("4. Архивные данные (GUI)")
+    print("5. Работа с БД (GUI)")
+    i = input()
+    if i.startswith('1'):
+        u.clean_tmp()
+        print("Скачиваются актуальные данные")
+        d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z), lambda x, y, z: None)
+    elif i.startswith('2'):
+        u.clean_tmp()
+        print('Скачиваются архивные данные: ')
+        # TODO use second callback
+        d.get_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w), lambda x, y, z: None)
+    elif i.startswith('3'):
+        raise NotImplementedError("GUI для скачивания актуальных данных ещё не реализован")
+    elif i.startswith('4'):
+        ArchivesApp.run()
+    else:
+        raise NotImplementedError("GUI для просмотра/изменения/обработки данных в БД ещё не реализован")
+
+    print("Готово!")
+
+
+if __name__ == "__main__":
+    main()
