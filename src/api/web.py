@@ -64,7 +64,7 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None]) -
     return dict([(parsing.get_relevant_year(relevant_page), companies)])
 
 
-def get_archive_data(callback: Callable[[DataGetStatus, float, float, str], None]) -> Dict[str, List[Company]]:
+def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None]) -> Dict[str, List[Company]]:
     return_data = {}
     years_links = parsing.get_archive_years_links(get_archives_page())
     for year, year_link in years_links.items():
@@ -98,8 +98,7 @@ def get_archive_data(callback: Callable[[DataGetStatus, float, float, str], None
         if callback is not None:
             callback(DataGetStatus.FINISHED, 0, 0, str(year))
 
-    print(data)
-    return data
+    return return_data
 
 
 def get_relevant_page() -> str:

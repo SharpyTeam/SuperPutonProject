@@ -5,3 +5,4 @@ progressbar2
 PyQt5
 pandas
 xlrd
+python-utils

@@ -1,8 +1,9 @@
 import re
+from typing import Dict, Optional
+
 import math
 import pandas as p
 from bs4 import BeautifulSoup as Bs
-from typing import Dict
 
 from src import config
 
@@ -36,16 +37,16 @@ def get_relevant_year(relevant_page: str) -> str:
 
 
 table_columns = [
-    'Страховые премии по договорам страхования',                # 0
-    'Страховая сумма по заключенным договорам страхования',     # 1
-    'Заключенных договоров страхования',                        # 2
-    'Договоров страхования на конец отчетного периода',         # 3
-    'Заявленных страховых случаев',                             # 4
-    'Урегулированных страховых случаев',                        # 5
-    'Страховых случаев с отказом в выплате',                    # 6
-    'Всего выплат по договорам страхования',                    # 7
-    'Страховые выплаты',                                        # 8
-    'Прочие выплаты'                                            # 9
+    'Страховые премии по договорам страхования',  # 0
+    'Страховая сумма по заключенным договорам страхования',  # 1
+    'Заключенных договоров страхования',  # 2
+    'Договоров страхования на конец отчетного периода',  # 3
+    'Заявленных страховых случаев',  # 4
+    'Урегулированных страховых случаев',  # 5
+    'Страховых случаев с отказом в выплате',  # 6
+    'Всего выплат по договорам страхования',  # 7
+    'Страховые выплаты',  # 8
+    'Прочие выплаты'  # 9
 ]
 
 table_columns_mappings = {
@@ -56,8 +57,17 @@ table_columns_mappings = {
 }
 
 
-def get_data_frame_from_xls(path: str) -> p.DataFrame:
-    frame = p.read_excel(path, header=None)
+def get_data_frame_from_xls(path: str) -> Optional[p.DataFrame]:
+    try:
+        # 2016 or 2018 format
+        frame = p.read_excel(path, header=None, verbose=True, sheet_name="Раздел 1")
+    except (IndexError, ValueError, OverflowError):
+        try:
+            # 2014 format
+            frame = p.read_excel(path, header=None, verbose=True, sheet_name="1C-1")
+        except (IndexError, ValueError, OverflowError):
+            # unknown data
+            return None
 
     if 'Наименование показателя' in frame.iloc[22, 0]:
         # 2018 format
@@ -100,8 +110,5 @@ def get_data_frame_from_xls(path: str) -> p.DataFrame:
 
     final_table = p.DataFrame(rows_list, columns=['Row Index'] + table_columns)
     final_table.set_index('Row Index', inplace=True, drop=True)
-
-    # TODO remove this print
-    print(final_table)
 
     return final_table
