@@ -43,7 +43,7 @@ class BackgroundParseProcess:
         self.comp_q.put(company)
         self.count_added += 1
 
-    def check_parse_status(self):
+    def fetch_parsed_companies(self):
         try:
             data_table = self.out_q.get_nowait()
             while True:
@@ -64,6 +64,7 @@ class BackgroundParseProcess:
     def finish_parse(self):
         self.in_q.put(None)
         self.process.join()
+        self.fetch_parsed_companies()
         if self.callback is not None:
             self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added)
 
@@ -102,7 +103,7 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
         company = Company(int(re.search(r'(?<=_)[0-9]*(?=(.xlsx?))', p).group(0)), '')
         companies.append(company)
         parse_process.parse_company(company, p)
-        parse_process.check_parse_status()
+        parse_process.fetch_parsed_companies()
         if callback is not None:
             callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
 
@@ -110,7 +111,6 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
         callback(DataGetStatus.FINISHED, 0, 0)
 
     zf.close()
-
     parse_process.finish_parse()
 
     return dict([(parsing.get_relevant_year(relevant_page), companies)])
@@ -144,7 +144,7 @@ def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
             company = Company(c_id, '')
             return_data[year].append(company)
             parse_process.parse_company(company, file_path)
-            parse_process.check_parse_status()
+            parse_process.fetch_parsed_companies()
             files_count += 1
             if callback is not None:
                 callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))

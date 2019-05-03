@@ -6,7 +6,6 @@ import src.api.utils as u
 import src.api.web as d
 from src.ui.gui.archives_app import ArchivesApp
 
-
 bar = None
 archives_pb_widgets = [
     'Файлов загружено: ', pb.widgets.FormatLabel("%(value)s/%(max_value)s"), ' (', pb.widgets.Percentage(), ')'
@@ -50,6 +49,7 @@ def archives_data_dl_callback(status: d.DataGetStatus, files_done: int, files_to
         bar.update(files_done)
     else:
         bar.finish()
+        bar = None
         print()
 
 
@@ -86,12 +86,13 @@ def main():
     if i.startswith('1'):
         u.clean_tmp()
         print("Скачиваются актуальные данные")
-        d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z), lambda x, y, z: None)
+        d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z), lambda x, y, z: print("L1:", x, y, z))
     elif i.startswith('2'):
         u.clean_tmp()
         print('Скачиваются архивные данные: ')
         # TODO use second callback
-        d.get_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w), lambda x, y, z: None)
+        d.get_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w),
+                           lambda x, y, z: print("L2:", x, y, z))
     elif i.startswith('3'):
         raise NotImplementedError("GUI для скачивания актуальных данных ещё не реализован")
     elif i.startswith('4'):
