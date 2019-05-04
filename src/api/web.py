@@ -3,8 +3,9 @@ import zipfile
 import requests
 import re
 import queue
-from multiprocessing import Process, Queue
-from typing import Callable, List, Dict, Tuple
+from threading import Thread, Event
+from multiprocessing import Pool, Queue
+from typing import Callable, List, Dict
 from enum import Enum
 
 from . import utils, parsing
@@ -22,49 +23,58 @@ class DataGetStatus(Enum):
 
 class BackgroundParseProcess:
     @staticmethod
-    def parse_background(in_q: Queue, out_q: Queue):
-        file_path = in_q.get()
-        while file_path is not None:
-            data_table = parsing.get_data_frame_from_xls(file_path)
-            out_q.put(data_table)
-            file_path = in_q.get()
+    def parse(xls_path: str):
+        return parsing.get_data_frame_from_xls(xls_path)
 
     def __init__(self, callback: Callable[[DataGetStatus, int, int], None]):
         self.callback = callback
-        self.in_q = Queue()
-        self.out_q = Queue()
-        self.comp_q = Queue()
-        self.process = Process(target=BackgroundParseProcess.parse_background, args=(self.in_q, self.out_q))
+        self.batch = []
+        self.batch_size = os.cpu_count()
+        self.pool = Pool(processes=self.batch_size)
         self.count_added = 0
         self.count_parsed = 0
+        self.imap_iterator = None
+        self.fetch_thread = Thread(target=self._fetch_from_pool)
+        self.finish = False
+        self.fetch_event = Event()
 
-    def parse_company(self, company, xls_path):
-        self.in_q.put(xls_path)
-        self.comp_q.put(company)
-        self.count_added += 1
+    def _push_to_pool(self):
+        if (len(self.batch) < self.batch_size and not self.finish) or self.imap_iterator is not None:
+            return
+        if len(self.batch) > 0:
+            self.imap_iterator = self.pool.imap(BackgroundParseProcess.parse, [x[1] for x in self.batch])
+        self.fetch_event.set()
 
-    def fetch_parsed_companies(self):
-        try:
-            data_table = self.out_q.get_nowait()
-            while True:
-                company = self.comp_q.get()
-                company.data_table = data_table
+    def _fetch_from_pool(self):
+        while True:
+            self.fetch_event.wait()
+            self.fetch_event.clear()
+            if self.imap_iterator is None:
+                if self.finish:
+                    break
+                continue
+            for data_table in self.imap_iterator:
+                self.batch.pop(0)[0].data_table = data_table
                 self.count_parsed += 1
                 if self.callback is not None:
                     self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)
-                data_table = self.out_q.get_nowait()
-        except queue.Empty:
-            pass
+            self.imap_iterator = None
+            self._push_to_pool()
+
+    def parse_company(self, company, xls_path):
+        self.batch.append((company, xls_path))
+        self.count_added += 1
+        self._push_to_pool()
 
     def start_parse(self):
-        self.process.start()
         if self.callback is not None:
             self.callback(DataGetStatus.STARTED, 0, 0)
+        self.fetch_thread.start()
 
     def finish_parse(self):
-        self.in_q.put(None)
-        self.process.join()
-        self.fetch_parsed_companies()
+        self.finish = True
+        self._push_to_pool()
+        self.fetch_thread.join()
         if self.callback is not None:
             self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added)
 
@@ -74,8 +84,6 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
     relevant_page = get_relevant_page()
     companies = []
     file_path = os.path.join(utils.get_tmp_path(), config.RELEVANT_ZIP_NAME)
-    parse_process = BackgroundParseProcess(parse_callback)
-    parse_process.start_parse()
 
     with open(file_path, "wb") as f:
         with requests.get(parsing.get_relevant_archive_link(relevant_page), stream=True) as r:
@@ -97,13 +105,15 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
     if callback is not None:
         callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
 
+    parse_process = BackgroundParseProcess(parse_callback)
+    parse_process.start_parse()
+
     for file in zf.infolist():
         extracted_size += file.file_size
         p = zf.extract(file, os.path.join(utils.get_tmp_path(), ''.join(config.RELEVANT_ZIP_NAME.split('.')[:-1])))
         company = Company(int(re.search(r'(?<=_)[0-9]*(?=(.xlsx?))', p).group(0)), '')
         companies.append(company)
         parse_process.parse_company(company, p)
-        parse_process.fetch_parsed_companies()
         if callback is not None:
             callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
 
@@ -144,7 +154,6 @@ def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
             company = Company(c_id, '')
             return_data[year].append(company)
             parse_process.parse_company(company, file_path)
-            parse_process.fetch_parsed_companies()
             files_count += 1
             if callback is not None:
                 callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))
