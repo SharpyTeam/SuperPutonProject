@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import math
 import pandas as p
@@ -58,14 +58,16 @@ table_columns_mappings = {
 }
 
 
-def get_data_frame_from_xls(path: str) -> Optional[p.DataFrame]:
+def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.DataFrame, str]]:
     try:
         # 2016 or 2018 format
-        frame = p.read_excel(path, header=None, sheet_name="Раздел 1")
+        frame = p.read_excel(path, header=None, sheet_name='Раздел 1')
     except (IndexError, ValueError, OverflowError, xlrd.XLRDError):
         try:
             # 2014 format
-            frame = p.read_excel(path, header=None, sheet_name="1C-1")
+            f = p.read_excel(path, header=None, sheet_name=['1C-1', 'Титульный лист'])
+            frame = f['1C-1']
+            frame_title = f['Титульный лист']
         except (IndexError, ValueError, OverflowError, xlrd.XLRDError):
             # unknown data
             return None
@@ -74,14 +76,17 @@ def get_data_frame_from_xls(path: str) -> Optional[p.DataFrame]:
         # 2018 format
         actual_columns_mapping = table_columns_mappings['2018']
         first_row_index = (28, 1)
+        company_name = frame.iloc[13, 3]
     elif 'Наименование показателя' in frame.iloc[14, 0]:
         # 2016-2017 format
         actual_columns_mapping = table_columns_mappings['2016']
         first_row_index = (19, 2)
+        company_name = frame.iloc[7, 2]
     elif 'Наименование показателя' in frame.iloc[2, 0]:
         # 2014-2015 format
         actual_columns_mapping = table_columns_mappings['2014']
         first_row_index = (6, 1)
+        company_name = frame_title.iloc[13, 1]
     else:
         return None  # unknown data
 
@@ -112,4 +117,4 @@ def get_data_frame_from_xls(path: str) -> Optional[p.DataFrame]:
     final_table = p.DataFrame(rows_list, columns=['Row Index'] + table_columns)
     final_table.set_index('Row Index', inplace=True, drop=True)
 
-    return final_table
+    return final_table, company_name
