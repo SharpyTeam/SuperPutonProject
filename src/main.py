@@ -75,6 +75,7 @@ def actual_data_dl_callback(status: d.DataGetStatus, done: float, total: float):
 
 def main():
     os.chdir(u.get_parent_directory(__file__, levels=2))
+    u.create_missing()
 
     print("-= Выберите действие =-")
     print("1. Скачать актуальные данные")
