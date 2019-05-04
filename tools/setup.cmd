@@ -1,3 +1,3 @@
 @echo off
 python -m pip install -r requirements.txt
-mkdir data\tmp
+mkdir ..\data\tmp

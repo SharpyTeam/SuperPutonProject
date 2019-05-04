@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\Documents\Projects\HSE\SuperPutonProject\uis\archives.ui'
+# Form implementation generated from reading ui file 'D:\Documents\HSE\1c_programming\SuperPutonProject\ui_src\archives.ui'
 #
 # Created by: PyQt5 UI code generator 5.12.1
 #

@@ -45,3 +45,9 @@ def clean_tmp() -> NoReturn:
                 shutil.rmtree(file_path)
         except Exception as e:
             print(e)
+
+
+def get_parent_directory(directory, levels=1):
+    for _ in range(levels):
+        directory = os.path.dirname(directory)
+    return directory
