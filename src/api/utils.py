@@ -1,9 +1,10 @@
 import os
 import shutil
-import sqlite3
 from os import path
+from typing import NoReturn
 
 from src import config
+from . import db
 
 
 def get_working_directory() -> str:
@@ -26,23 +27,13 @@ def get_schema_path() -> str:
     return path.join(get_working_directory(), config.DATA_DIR, config.DB_SCHEMA_FILENAME)
 
 
-def create_db():
-    open(get_db_path(), 'a').close()
-    db = sqlite3.connect(get_db_path())
-    schema_file = open(get_schema_path(), 'r')
-    sql = schema_file.read()
-    schema_file.close()
-    db.executescript(sql)
-    db.close()
-
-
-def create_missing():
+def create_missing() -> NoReturn:
     if not path.exists(get_db_path()):
-        create_db()
+        db.create_db()
     os.makedirs(get_tmp_path(), exist_ok=True)
 
 
-def clean_tmp():
+def clean_tmp() -> NoReturn:
     create_missing()
     tmp_dir = get_tmp_path()
     for the_file in os.listdir(tmp_dir):
