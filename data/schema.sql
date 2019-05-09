@@ -3,7 +3,7 @@
 create table if not exists reports
 (
     company_id  integer not null,
-    period_id   integer not null,
+    period      text    not null,
     string_code text    not null,
     col_0       real default 0,
     col_1       real default 0,
@@ -15,18 +15,13 @@ create table if not exists reports
     col_7       real default 0,
     col_8       real default 0,
     col_9       real default 0,
-    primary key (company_id, period_id, string_code)
+    primary key (company_id, period, string_code)
 );
 
 create table if not exists available_periods
 (
-    period_id integer not null
-        primary key autoincrement,
-    year      text    not null
+    year text not null primary key
 );
-
-create unique index available_periods_period_id_uindex
-    on available_periods (period_id);
 
 create unique index available_periods_year_uindex
     on available_periods (year);

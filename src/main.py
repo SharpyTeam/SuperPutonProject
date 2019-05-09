@@ -4,6 +4,8 @@ import progressbar as pb
 
 import src.api.utils as u
 import src.api.web as d
+from src.api.db import DBCompanyDataManager, AsyncDB
+from src.api.models.company_data import CompanyData
 from src.ui.gui.archives_app import ArchivesApp
 
 bar = None
@@ -38,10 +40,24 @@ actual_pb_widgets = [
     ' | ', pb.widgets.Timer(format='Прошло времени: %(elapsed)s')
 ]
 
+actual_dl_status = None
+actual_parse_status = None
+
+
+def parsing_callback(status: d.DataGetStatus, parsed: int, total: int, cd: CompanyData):
+    global actual_parse_status
+    actual_parse_status = d.DataGetStatus
+    if status == d.DataGetStatus.PARSING and cd is not None:
+        DBCompanyDataManager.add(cd, None)
+    if status == d.DataGetStatus.FINISHED:
+        print("Всё обработано.")
+
 
 def archives_data_dl_callback(status: d.DataGetStatus, files_done: int, files_total: int, year: str):
     global bar
-    if status == d.DataGetStatus.STARTED:
+    if status == d.DataGetStatus.SKIPPING:
+        print("Архив за %s год уже скачан, переходим к следующему году." % year)
+    elif status == d.DataGetStatus.STARTED:
         print("Скачиваются архивы за %s год:" % year)
     elif status == d.DataGetStatus.DOWNLOADING:
         if bar is None:
@@ -74,6 +90,7 @@ def actual_data_dl_callback(status: d.DataGetStatus, done: float, total: float):
 
 
 def main():
+    global actual_parse_status
     os.chdir(u.get_parent_directory(__file__, levels=2))
     u.create_missing()
 
@@ -88,12 +105,14 @@ def main():
         u.clean_tmp()
         print("Скачиваются актуальные данные")
         d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z), lambda x, y, z: print("L1:", x, y, z))
+        while actual_parse_status != d.DataGetStatus.FINISHED:
+            pass
     elif i.startswith('2'):
         u.clean_tmp()
         print('Скачиваются архивные данные: ')
         # TODO use second callback
         d.get_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w),
-                           lambda x, y, z: print("L2:", x, y, z))
+                           lambda x, y, z, w: parsing_callback(x, y, z, w))  # print("L2:", x, y, z))
     elif i.startswith('3'):
         raise NotImplementedError("GUI для скачивания актуальных данных ещё не реализован")
     elif i.startswith('4'):
@@ -101,6 +120,7 @@ def main():
     else:
         raise NotImplementedError("GUI для просмотра/изменения/обработки данных в БД ещё не реализован")
 
+    AsyncDB.get_instance().shutdown()
     print("Готово!")
 
 

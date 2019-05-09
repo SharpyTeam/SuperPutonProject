@@ -1,16 +1,19 @@
 import os
 import re
 import zipfile
-import requests
 from enum import Enum
 from multiprocessing import Pool
 from threading import Thread, Event
-from typing import Callable, List
+from typing import Callable, NoReturn, Optional, Tuple
+
+import pandas as p
+import requests
 
 from src import config
+from .db import DBPeriodManager
 from . import utils, parsing
-from .company import Company
-from .company_data import CompanyData
+from .models.company import Company
+from .models.company_data import CompanyData
 
 
 class DataGetStatus(Enum):
@@ -19,14 +22,15 @@ class DataGetStatus(Enum):
     EXTRACTING = 3
     PARSING = 4
     FINISHED = 5
+    SKIPPING = 6
 
 
 class BackgroundParseProcess:
     @staticmethod
-    def parse(xls_path: str):
+    def parse(xls_path: str) -> Optional[Tuple[p.DataFrame, str]]:
         return parsing.get_data_frame_and_company_name_from_xls(xls_path)
 
-    def __init__(self, callback: Callable[[DataGetStatus, int, int], None]):
+    def __init__(self, callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]):
         self.callback = callback
         self.batch = []
         self.batch_size = os.cpu_count()
@@ -38,14 +42,14 @@ class BackgroundParseProcess:
         self.finish = False
         self.fetch_event = Event()
 
-    def _push_to_pool(self):
+    def _push_to_pool(self) -> NoReturn:
         if (len(self.batch) < self.batch_size and not self.finish) or self.imap_iterator is not None:
             return
         if len(self.batch) > 0:
             self.imap_iterator = self.pool.imap(BackgroundParseProcess.parse, [x[2] for x in self.batch])
         self.fetch_event.set()
 
-    def _fetch_from_pool(self):
+    def _fetch_from_pool(self) -> NoReturn:
         while True:
             self.fetch_event.wait()
             self.fetch_event.clear()
@@ -62,30 +66,30 @@ class BackgroundParseProcess:
                 company.name = company_name
                 self.count_parsed += 1
                 if self.callback is not None:
-                    self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)
+                    self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added, company.data[year])
             self.imap_iterator = None
             self._push_to_pool()
 
-    def parse_company(self, company, year, xls_path):
+    def parse_company(self, company, year, xls_path) -> NoReturn:
         self.batch.append((company, year, xls_path))
         self.count_added += 1
         self._push_to_pool()
 
-    def start_parse(self):
+    def start_parse(self) -> NoReturn:
         if self.callback is not None:
-            self.callback(DataGetStatus.STARTED, 0, 0)
+            self.callback(DataGetStatus.STARTED, 0, 0, None)
         self.fetch_thread.start()
 
-    def finish_parse(self):
+    def finish_parse(self) -> NoReturn:
         self.finish = True
         self._push_to_pool()
         self.fetch_thread.join()
         if self.callback is not None:
-            self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added)
+            self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added, None)
 
 
 def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
-                      parse_callback: Callable[[DataGetStatus, int, int], None]) -> List[Company]:
+                      parse_callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
     relevant_page = get_relevant_page()
     year = parsing.get_relevant_year(relevant_page)
     companies = []
@@ -129,16 +133,19 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
     zf.close()
     parse_process.finish_parse()
 
-    return companies
-
 
 def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
-                     parse_callback: Callable[[DataGetStatus, int, int], None]) -> List[Company]:
+                     parse_callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
     companies = {}
     years_links = parsing.get_archive_years_links(get_archives_page())
     parse_process = BackgroundParseProcess(parse_callback)
     parse_process.start_parse()
     for year, year_link in years_links.items():
+        if DBPeriodManager.is_period_available_sync(year):
+            if callback is not None:
+                callback(DataGetStatus.SKIPPING, 0, 0, year)
+            continue
+
         xls_links = parsing.get_archive_companies_xls_links(get_page(year_link))
 
         if callback is not None:
@@ -166,12 +173,12 @@ def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
             if callback is not None:
                 callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))
 
+        DBPeriodManager.add(year, None)
+
         if callback is not None:
             callback(DataGetStatus.FINISHED, 0, 0, str(year))
 
     parse_process.finish_parse()
-
-    return list(companies.values())
 
 
 def get_relevant_page() -> str:

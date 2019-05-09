@@ -47,7 +47,7 @@ def clean_tmp() -> NoReturn:
             print(e)
 
 
-def get_parent_directory(directory, levels=1):
+def get_parent_directory(directory: str, levels: int = 1) -> str:
     for _ in range(levels):
         directory = os.path.dirname(directory)
     return directory

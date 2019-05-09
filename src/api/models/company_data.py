@@ -1,3 +1,4 @@
+import numpy as np
 import pandas
 
 from .company import Company
@@ -17,6 +18,16 @@ class CompanyData:
         if self.data_frame.iloc[key[0], key[1]] != value:
             self.data_frame.iloc[key[0], key[1]] = value
             self.changed = True
+
+    def __iter__(self):
+        self.index = -1
+        return self
+
+    def __next__(self):
+        if self.index == self.data_frame.shape[0]:
+            raise StopIteration
+        self.index += 1
+        return self.data_frame.index[self.index], np.asarray(self.data_frame.iloc[self.index])
 
     def copy(self):
         return CompanyData(self.company, self.year, self.data_frame.copy())
