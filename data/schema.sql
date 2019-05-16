@@ -4,7 +4,7 @@ create table if not exists reports
 (
     company_id  integer not null,
     period      text    not null,
-    string_code text    not null,
+    string_code integer not null,
     col_0       real default 0,
     col_1       real default 0,
     col_2       real default 0,

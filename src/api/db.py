@@ -1,12 +1,11 @@
 import sqlite3
-from enum import Enum
 from queue import Queue
 from threading import Thread
 from typing import NoReturn, Callable, Optional, Tuple, List
 
-from .models.company_data import CompanyData
-from .models.company import Company
 from . import utils
+from .models.company import Company
+from .models.company_data import CompanyData
 from .. import config
 
 
@@ -146,7 +145,12 @@ class DBCompanyDataManager:
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
 
         args = (company_data.company.index, company_data.year)
-        batch_args = [args + row[0] + tuple(row[1]) for row in company_data]
+        batch_args = []
+        for c_id, c_row in company_data:
+            row_args = args
+            row_args += (int(c_id),)
+            row_args += tuple(c_row.tolist())
+            batch_args.append(row_args)
         if separately:
             for separate_args in batch_args:
                 AsyncDB.get_instance().commit((query, separate_args), callback)

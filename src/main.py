@@ -104,7 +104,8 @@ def main():
     if i.startswith('1'):
         u.clean_tmp()
         print("Скачиваются актуальные данные")
-        d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z), lambda x, y, z: print("L1:", x, y, z))
+        d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z),
+                            lambda x, y, z, w: parsing_callback(x, y, z, w))
         while actual_parse_status != d.DataGetStatus.FINISHED:
             pass
     elif i.startswith('2'):
