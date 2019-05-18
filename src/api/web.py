@@ -137,7 +137,7 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
 def get_archive_data_async(callback: Callable[[DataGetStatus, int, int, str], None],
                            parse_callback: Callable[
                                [DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
-    t = Thread(targget=get_archive_data, args=(callback, parse_callback))
+    t = Thread(target=get_archive_data, args=(callback, parse_callback))
     t.start()
 
 
