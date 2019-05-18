@@ -134,6 +134,24 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
     parse_process.finish_parse()
 
 
+def get_archive_data_async(callback: Callable[[DataGetStatus, int, int, str], None],
+                           parse_callback: Callable[
+                               [DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
+    t = Thread(targget=get_archive_data, args=(callback, parse_callback))
+    t.start()
+
+
+def download_xls(data) -> Tuple[str, str, str]:
+    c_id, year, folder_path, xls_link = data
+    response = requests.get(xls_link, stream=True)
+    file_name = "kstat_" + c_id + ".xls"
+    file_path = os.path.join(folder_path, file_name)
+    with open(file_path, "wb") as f:
+        for data in response.iter_content(chunk_size=4096):
+            f.write(data)
+    return c_id, year, file_path
+
+
 def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
                      parse_callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
     companies = {}
@@ -156,13 +174,10 @@ def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
         folder_path = os.path.join(utils.get_tmp_path(), 'archive', str(year))
         os.makedirs(folder_path, exist_ok=True)
 
-        for c_id, xls_link in xls_links.items():
-            response = requests.get(xls_link, stream=True)
-            file_name = "kstat_" + c_id + ".xls"
-            file_path = os.path.join(folder_path, file_name)
-            with open(file_path, "wb") as f:
-                for data in response.iter_content(chunk_size=4096):
-                    f.write(data)
+        download_pool = Pool()
+        for c_id, year, file_path in download_pool.imap_unordered(download_xls,
+                                                                  [(c_id, year, folder_path, xls_link) for
+                                                                   c_id, xls_link in xls_links.items()]):
             if c_id in companies:
                 company = companies[c_id]
             else:
