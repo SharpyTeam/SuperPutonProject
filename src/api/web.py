@@ -10,8 +10,7 @@ import pandas as p
 import requests
 
 from src import config
-from .db import DBPeriodManager
-from . import utils, parsing
+from . import utils, parsing, db
 from .models.company import Company
 from .models.company_data import CompanyData
 
@@ -30,7 +29,7 @@ class BackgroundParseProcess:
     def parse(xls_path: str) -> Optional[Tuple[p.DataFrame, str]]:
         return parsing.get_data_frame_and_company_name_from_xls(xls_path)
 
-    def __init__(self, callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]):
+    def __init__(self, callback: Callable[[DataGetStatus, int, int], None]):
         self.callback = callback
         self.batch = []
         self.batch_size = os.cpu_count()
@@ -50,6 +49,9 @@ class BackgroundParseProcess:
         self.fetch_event.set()
 
     def _fetch_from_pool(self) -> NoReturn:
+        db_wrapper = db.DBWrapper()
+        db_wrapper.start()
+
         while True:
             self.fetch_event.wait()
             self.fetch_event.clear()
@@ -64,11 +66,14 @@ class BackgroundParseProcess:
                 company, year, _ = self.batch.pop(0)
                 company.data[year] = CompanyData(company, year, data_frame)
                 company.name = company_name
+                db_wrapper.add_company_async(company)
                 self.count_parsed += 1
                 if self.callback is not None:
-                    self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added, company.data[year])
+                    self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)
             self.imap_iterator = None
             self._push_to_pool()
+
+        db_wrapper.stop()
 
     def parse_company(self, company, year, xls_path) -> NoReturn:
         self.batch.append((company, year, xls_path))
@@ -77,7 +82,7 @@ class BackgroundParseProcess:
 
     def start_parse(self) -> NoReturn:
         if self.callback is not None:
-            self.callback(DataGetStatus.STARTED, 0, 0, None)
+            self.callback(DataGetStatus.STARTED, 0, 0)
         self.fetch_thread.start()
 
     def finish_parse(self) -> NoReturn:
@@ -85,35 +90,52 @@ class BackgroundParseProcess:
         self._push_to_pool()
         self.fetch_thread.join()
         if self.callback is not None:
-            self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added, None)
+            self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added)
 
 
-def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
-                      parse_callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
-    relevant_page = get_relevant_page()
+def download_relevant_data(download_callback: Callable[[DataGetStatus, float, float], None],
+                           extract_callback: Callable[[DataGetStatus, int, int], None],
+                           parse_callback: Callable[[DataGetStatus, int, int], None]) -> NoReturn:
+    relevant_page = download_page(config.RELEVANT_PAGE_URL)
     year = parsing.get_relevant_year(relevant_page)
     companies = []
     file_path = os.path.join(utils.get_tmp_path(), config.RELEVANT_ZIP_NAME)
+
+    db_wrapper = db.DBWrapper()
+    db_wrapper.start()
+
+    if db_wrapper.is_period_available(year):
+        if download_callback is not None:
+            download_callback(DataGetStatus.SKIPPING, 0, 0)
+        if extract_callback is not None:
+            extract_callback(DataGetStatus.SKIPPING, 0, 0)
+        if parse_callback is not None:
+            parse_callback(DataGetStatus.SKIPPING, 0, 0)
+        db_wrapper.stop()
+        return
 
     with open(file_path, "wb") as f:
         with requests.get(parsing.get_relevant_archive_link(relevant_page), stream=True) as r:
             r.raise_for_status()
             data_length = 0
-            if callback is not None:
-                callback(DataGetStatus.STARTED, 0, 0)
+            if download_callback is not None:
+                download_callback(DataGetStatus.STARTED, 0, 0)
             for data in r.iter_content(chunk_size=4096):
                 data_length += len(data)
                 f.write(data)
-                if callback is not None:
-                    callback(DataGetStatus.DOWNLOADING, data_length, float('inf'))
+                if download_callback is not None:
+                    download_callback(DataGetStatus.DOWNLOADING, data_length, float('inf'))
         f.flush()
 
     zf = zipfile.ZipFile(file_path, 'r')
     uncompress_size = sum((file.file_size for file in zf.infolist()))
     extracted_size = 0
 
-    if callback is not None:
-        callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
+    if download_callback is not None:
+        download_callback(DataGetStatus.FINISHED, extracted_size, uncompress_size)
+
+    if extract_callback is not None:
+        extract_callback(DataGetStatus.STARTED, 0, 0)
 
     parse_process = BackgroundParseProcess(parse_callback)
     parse_process.start_parse()
@@ -124,24 +146,20 @@ def get_relevant_data(callback: Callable[[DataGetStatus, float, float], None],
         company = Company(int(re.search(r'(?<=_)[0-9]*(?=(.xlsx?))', p).group(0)), '')
         companies.append(company)
         parse_process.parse_company(company, year, p)
-        if callback is not None:
-            callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
+        if extract_callback is not None:
+            extract_callback(DataGetStatus.EXTRACTING, extracted_size, uncompress_size)
 
-    if callback is not None:
-        callback(DataGetStatus.FINISHED, 0, 0)
+    if extract_callback is not None:
+        extract_callback(DataGetStatus.FINISHED, 0, 0)
 
     zf.close()
     parse_process.finish_parse()
 
-
-def get_archive_data_async(callback: Callable[[DataGetStatus, int, int, str], None],
-                           parse_callback: Callable[
-                               [DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
-    t = Thread(target=get_archive_data, args=(callback, parse_callback))
-    t.start()
+    db_wrapper.add_period_async(year)
+    db_wrapper.stop()
 
 
-def download_xls(data) -> Tuple[str, str, str]:
+def _download_xls(data) -> Tuple[str, str, str]:
     c_id, year, folder_path, xls_link = data
     response = requests.get(xls_link, stream=True)
     file_name = "kstat_" + c_id + ".xls"
@@ -152,22 +170,26 @@ def download_xls(data) -> Tuple[str, str, str]:
     return c_id, year, file_path
 
 
-def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
-                     parse_callback: Callable[[DataGetStatus, int, int, Optional[CompanyData]], None]) -> NoReturn:
+def download_archive_data(download_callback: Callable[[DataGetStatus, int, int, str], None],
+                          parse_callback: Callable[[DataGetStatus, int, int], None]) -> NoReturn:
     companies = {}
-    years_links = parsing.get_archive_years_links(get_archives_page())
+    years_links = parsing.get_archive_years_links(download_page(config.ARCHIVES_PAGE_URL))
     parse_process = BackgroundParseProcess(parse_callback)
     parse_process.start_parse()
+    db_wrapper = db.DBWrapper()
+    db_wrapper.start()
+
+    added_years = []
     for year, year_link in years_links.items():
-        if DBPeriodManager.is_period_available_sync(year):
-            if callback is not None:
-                callback(DataGetStatus.SKIPPING, 0, 0, year)
+        if db_wrapper.is_period_available(year):
+            if download_callback is not None:
+                download_callback(DataGetStatus.SKIPPING, 0, 0, year)
             continue
 
-        xls_links = parsing.get_archive_companies_xls_links(get_page(year_link))
+        xls_links = parsing.get_archive_companies_xls_links(download_page(year_link))
 
-        if callback is not None:
-            callback(DataGetStatus.STARTED, 0, 0, year)
+        if download_callback is not None:
+            download_callback(DataGetStatus.STARTED, 0, 0, year)
 
         files_count = 0
 
@@ -175,7 +197,7 @@ def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
         os.makedirs(folder_path, exist_ok=True)
 
         download_pool = Pool()
-        for c_id, year, file_path in download_pool.imap_unordered(download_xls,
+        for c_id, year, file_path in download_pool.imap_unordered(_download_xls,
                                                                   [(c_id, year, folder_path, xls_link) for
                                                                    c_id, xls_link in xls_links.items()]):
             if c_id in companies:
@@ -185,25 +207,20 @@ def get_archive_data(callback: Callable[[DataGetStatus, int, int, str], None],
                 companies[c_id] = company
             parse_process.parse_company(company, year, file_path)
             files_count += 1
-            if callback is not None:
-                callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))
+            if download_callback is not None:
+                download_callback(DataGetStatus.DOWNLOADING, files_count, len(xls_links.keys()), str(year))
 
-        DBPeriodManager.add(year, None)
+        added_years.append(str(year))
 
-        if callback is not None:
-            callback(DataGetStatus.FINISHED, 0, 0, str(year))
+        if download_callback is not None:
+            download_callback(DataGetStatus.FINISHED, 0, 0, str(year))
 
     parse_process.finish_parse()
+    for year in added_years:
+        db_wrapper.add_period_async(year)
+    db_wrapper.stop()
 
 
-def get_relevant_page() -> str:
-    return get_page(config.RELEVANT_PAGE_URL)
-
-
-def get_archives_page() -> str:
-    return get_page(config.ARCHIVES_PAGE_URL)
-
-
-def get_page(url: str) -> str:
+def download_page(url: str) -> Optional[str]:
     r = requests.get(url)
     return r.text if r.ok else None

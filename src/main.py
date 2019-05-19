@@ -4,7 +4,6 @@ import progressbar as pb
 
 import src.api.utils as u
 import src.api.web as d
-from src.api.db import DBCompanyDataManager, AsyncDB
 from src.api.models.company_data import CompanyData
 from src.ui.gui.archives_app import ArchivesApp
 
@@ -44,11 +43,9 @@ actual_dl_status = None
 actual_parse_status = None
 
 
-def parsing_callback(status: d.DataGetStatus, parsed: int, total: int, cd: CompanyData):
+def parsing_callback(status: d.DataGetStatus, parsed: int, total: int):
     global actual_parse_status
     actual_parse_status = d.DataGetStatus
-    if status == d.DataGetStatus.PARSING and cd is not None:
-        DBCompanyDataManager.add(cd, None)
     if status == d.DataGetStatus.FINISHED:
         print("Всё обработано.")
 
@@ -104,16 +101,15 @@ def main():
     if i.startswith('1'):
         u.clean_tmp()
         print("Скачиваются актуальные данные")
-        d.get_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z),
-                            lambda x, y, z, w: parsing_callback(x, y, z, w))
-        while actual_parse_status != d.DataGetStatus.FINISHED:
-            pass
+        d.download_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z),
+                                 lambda x, y, z: None,
+                                 lambda x, y, z: parsing_callback(x, y, z))
     elif i.startswith('2'):
         u.clean_tmp()
         print('Скачиваются архивные данные: ')
         # TODO use second callback
-        d.get_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w),
-                           lambda x, y, z, w: parsing_callback(x, y, z, w))  # print("L2:", x, y, z))
+        d.download_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w),
+                                lambda x, y, z: parsing_callback(x, y, z))  # print("L2:", x, y, z))
     elif i.startswith('3'):
         raise NotImplementedError("GUI для скачивания актуальных данных ещё не реализован")
     elif i.startswith('4'):
@@ -121,7 +117,6 @@ def main():
     else:
         raise NotImplementedError("GUI для просмотра/изменения/обработки данных в БД ещё не реализован")
 
-    AsyncDB.get_instance().shutdown()
     print("Готово!")
 
 

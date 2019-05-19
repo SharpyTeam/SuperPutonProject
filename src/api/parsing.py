@@ -91,6 +91,7 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
         return None  # unknown data
 
     rows_list = []
+    indices_list = []
 
     for row in range(first_row_index[0], frame.shape[0]):
         # Ignore fractional and empty row indices
@@ -99,7 +100,7 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
         except ValueError:
             continue
 
-        final_row = [row_index]
+        final_row = []
 
         for column in range(len(table_columns)):
             try:
@@ -113,8 +114,8 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
         # Unfilled cells will contain 0.0's
 
         rows_list.append(final_row)
+        indices_list.append(row_index)
 
-    final_table = p.DataFrame(rows_list, columns=['Row Index'] + table_columns)
-    final_table.set_index('Row Index', inplace=True, drop=True)
+    final_table = p.DataFrame(rows_list, index=indices_list)
 
     return final_table, company_name

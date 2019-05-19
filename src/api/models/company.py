@@ -1,13 +1,13 @@
 class Company:
-    def __init__(self, index, name):
-        self.index = index
+    def __init__(self, id, name):
+        self.id = id
         self.name = name
         self.data = {}          # year-CompanyData pairs
+        self.changed = False
 
-    def commit_to_db(self):
-        changed = []
-        for key, value in self.data.items():
-            if value.changed:
-                changed.append(value.copy_to_commit())
-        # TODO commit list of changes to db here
+    def get_is_changed_and_reset(self):
+        if self.changed:
+            self.changed = False
+            return True
+        return False
 

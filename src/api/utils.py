@@ -28,8 +28,6 @@ def get_schema_path() -> str:
 
 
 def create_missing() -> NoReturn:
-    if not path.exists(get_db_path()):
-        db.create_db()
     os.makedirs(get_tmp_path(), exist_ok=True)
 
 
