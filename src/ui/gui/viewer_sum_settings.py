@@ -48,7 +48,5 @@ class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_
 
     @staticmethod
     def run():
-        app = QtWidgets.QApplication(sys.argv)
         window = ViewerSumSettingsApp()
         window.show()
-        sys.exit(app.exec())

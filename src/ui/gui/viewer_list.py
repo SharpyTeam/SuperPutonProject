@@ -6,6 +6,7 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
 from api.runtime import Runtime
+from ui.gui.viewer_sum_settings import ViewerSumSettingsApp
 from .design import viewer_list_design
 
 
@@ -21,7 +22,7 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
         self.company = None
         self.data = None
         self.preload_finished.connect(self._preload_ended)
-        self.
+        self.sum_settings_button.clicked.connect(self._run_sum_settings)
         self.preloading_thread = Thread(target=self._preload_all, daemon=True)
         self.data_table.setEnabled(False)
         self.show_stats_button.setEnabled(False)
@@ -29,6 +30,9 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
         self.sum_settings_button.setEnabled(False)
         self.exit_button.clicked.connect(self._handle_exit_button_click)
         self.preloading_thread.start()
+
+    def _run_sum_settings(self):
+        ViewerSumSettingsApp.run()
 
     def _handle_save_button_click(self):
         self._close()
