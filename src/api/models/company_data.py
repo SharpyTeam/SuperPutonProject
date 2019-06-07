@@ -11,8 +11,8 @@ class CompanyData:
         self.data_frame = data if isinstance(data, pandas.DataFrame) else None
 
         if self.data_frame is None and data is not None:
-            rows_indices = [data_row.pop(0) for data_row in data]
-            rows_list = data
+            rows_indices = [data_row[0] for data_row in data]
+            rows_list = [data_row[1:] for data_row in data]
             self.data_frame = pandas.DataFrame(rows_list, index=rows_indices)
 
     def __getitem__(self, key):

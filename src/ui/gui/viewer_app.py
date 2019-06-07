@@ -2,11 +2,10 @@ import sys
 from threading import Thread
 from typing import List, Optional
 
-from PyQt5 import QtWidgets, QtCore, Qt
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
 from src.api import db
-from src.api.db import DBWrapper, DBManager
 from src.api.models.company import Company
 from .design import viewer_design
 
@@ -58,10 +57,10 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
             self.data_table.setColumnCount(2)
             self.data_table.setHorizontalHeaderLabels(["№ в реестре", "Название"])
             self.data_table.setRowCount(len(self.companies_list))
-            for i in range(len(self.periods_list)):
+            for i in range(len(self.companies_list)):
                 self.data_table.setItem(i, 0, QTableWidgetItem(str(self.companies_list[i].id)))
                 self.data_table.setItem(i, 1, QTableWidgetItem(str(self.companies_list[i].name)))
-            if len(self.periods_list) == 0:
+            if len(self.companies_list) == 0:
                 self.data_table.setColumnCount(1)
                 self.data_table.setHorizontalHeaderLabels(["Список компаний"])
                 self.data_table.setRowCount(1)
@@ -80,7 +79,7 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
     def _preload_data(self):
         print("Preloading data...")
         self.db_wrapper.get_all_periods_async(self._period_preload_callback)
-        self.db_wrapper.get_all_companies_names_async(self._company_preload_callback)
+        self.db_wrapper.get_all_companies_async(self._company_preload_callback)
         while self.companies_list is None or self.periods_list is None:
             pass
         self.preload_finished.emit()
