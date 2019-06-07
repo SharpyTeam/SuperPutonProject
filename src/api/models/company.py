@@ -22,7 +22,7 @@ class Company:
     def get_period_data_summed(self, year: str) -> Optional[Tuple]:
         period = self.get_period_data(year)
         if period is None:
-            return
+            return None
         summed = []
         for index in RuntimeConfig.rows_indices_to_sum:
             data_row = list(period.data_frame.loc[index])

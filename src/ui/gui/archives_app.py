@@ -11,8 +11,8 @@ from api import config
 class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
     preload_finished = QtCore.pyqtSignal()
     download_started = QtCore.pyqtSignal()
-    download_progress_changed = QtCore.pyqtSignal(int, int)
-    parse_progress_changed = QtCore.pyqtSignal()
+    download_progress_changed = QtCore.pyqtSignal(int, int, str)
+    parse_progress_changed = QtCore.pyqtSignal(int, int)
     download_finished = QtCore.pyqtSignal()
     download_interrupted = QtCore.pyqtSignal()
 
@@ -29,10 +29,10 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
         self.download_progress_changed.connect(self._r_ui_download_progress_changed)
         self.parse_progress_changed.connect(self._r_ui_parse_progress_changed)
         self.download_finished.connect(self._r_ui_download_finished)
-        preloading_thread = Thread(target=self._preload_year_list)
+        preloading_thread = Thread(target=self._preload_year_list, daemon=True)
         preloading_thread.start()
-        self.downloader_thread: Thread = Thread(target=self._begin_download)
-        self.interrupter_thread: Thread = Thread(target=self._interrupt_download)
+        self.downloader_thread: Thread = Thread(target=self._begin_download, daemon=True)
+        self.interrupter_thread: Thread = Thread(target=self._interrupt_download, daemon=True)
         self.year_list: List = []
         self.beginDownloadButton.clicked.connect(self.on_dl_button_press)
 
@@ -47,12 +47,20 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
     def _r_ui_download_started(self):
         self.dlProgressBar.setTextVisible(False)
         self.dl_pb_label.setVisible(True)
+        self.parsing_pb_label.setVisible(True)
         self.dlProgressBar.setVisible(True)
         self.dlProgressBar.setMinimum(0)
         self.dlProgressBar.setMaximum(100)
         self.dlProgressBar.setValue(100)
+        self.parseProgressBar.setVisible(True)
+        self.parseProgressBar.setTextVisible(False)
+        self.parseProgressBar.setMinimum(0)
+        self.parseProgressBar.setMaximum(100)
+        self.parseProgressBar.setValue(100)
+        self.beginDownloadButton.setEnabled(True)
 
-    def _r_ui_download_progress_changed(self, files_done: int, files_total: int, ):
+    def _r_ui_download_progress_changed(self, files_done: int, files_total: int, year: str):
+        self.status_label.setText("Скачивание данных (" + year + ")...")
         if not self.dlProgressBar.isTextVisible():
             self.dlProgressBar.setTextVisible(True)
             self.dlProgressBar.setMaximum(files_total)
@@ -60,12 +68,12 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
             self.dlProgressBar.setValue(files_done)
 
     def _r_ui_parse_progress_changed(self, parsed: int, total: int):
-        if not self.parseProgressBar.isVisible():
-            self.parseProgressBar.setVisible(True)
-            self.parseProgressBar.setMinimum(0)
-            self.parseProgressBar.setValue(parsed)
+        if not self.parseProgressBar.isTextVisible():
+            self.parseProgressBar.setTextVisible(True)
             self.parseProgressBar.setMaximum(total)
-        self.parseProgressBar.setValue(parsed)
+        if self.parseProgressBar.isTextVisible():
+            self.parseProgressBar.setMaximum(total)
+            self.parseProgressBar.setValue(parsed)
 
     def _r_ui_download_finished(self):
         self.parseProgressBar.setVisible(False)
@@ -74,6 +82,7 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
         self.parsing_pb_label.setVisible(False)
         self.status_label.setText("Всё скачалось!")
         self.listWidget.setVisible(False)
+        self.beginDownloadButton.setText("Закрыть программу")
 
     def _preload_year_list(self):
         self.year_list = [i + ", I квартал" for i in
@@ -88,7 +97,7 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
         elif status == web.DataGetStatus.STARTED:
             self.download_started.emit()
         elif status == web.DataGetStatus.DOWNLOADING:
-            self.download_progress_changed.emit(files_done, files_total)
+            self.download_progress_changed.emit(files_done, files_total, year)
         else:
             pass
         # TODO: Show icons next to widget items
@@ -102,6 +111,7 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
         utils.clean_tmp()
         web.download_archive_data(lambda x, y, z, w: self._archives_data_dl_callback(x, y, z, w),
                                   lambda x, y, z: self._parsing_callback(x, y, z))
+        utils.clean_tmp()
         self.download_finished.emit()
 
     def _interrupt_download(self):

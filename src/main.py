@@ -1,5 +1,7 @@
 import os
 
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import api.utils as u
 import api.web as web
 
@@ -9,6 +11,8 @@ from ui.console.relevant_console import actual_data_dl_callback
 from ui.gui.archives_app import ArchivesApp
 from ui.gui.relevant_app import RelevantApp
 from ui.gui.viewer_app import ViewerApp
+
+import signal
 
 bar = None
 
@@ -26,9 +30,7 @@ def parsing_callback(status: web.DataGetStatus, parsed: int, total: int):
 
 
 def main():
-    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     u.create_missing()
-    print(os.getcwd())
     print("-= Выберите действие =-")
     print("1. Скачать актуальные данные")
     print("2. Скачать архивные данные")
@@ -59,4 +61,10 @@ def main():
 
 
 if __name__ == "__main__":
+    def keyboard_interrupt_handler(signal, frame):
+        print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal))
+        exit(0)
+
+
+    signal.signal(signal.SIGTERM, keyboard_interrupt_handler)
     main()

@@ -88,7 +88,7 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
         actual_columns_mapping = table_columns_mappings['2016']
         first_row_index = (19, 2)
         company_name = frame.iloc[7, 2]
-    elif 'Наименование показателя' in frame.iloc[2, 0]:
+    elif 'Наименование показателя' in str(frame.iloc[2, 0]):
         # 2014-2015 format
         actual_columns_mapping = table_columns_mappings['2014']
         first_row_index = (6, 1)

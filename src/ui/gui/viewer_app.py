@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QTableWidgetItem
 
 from api import db
 from api.models.company import Company
+from ui.gui.viewer_list import ViewerListApp
 from .design import viewer_design
 
 
@@ -29,18 +30,30 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
         self.year_rb.setEnabled(False)
         self.company_rb.setEnabled(False)
         self.data_table.setEnabled(False)
-        self.preload_data_thread = Thread(target=self._preload_data)
+        self.show_data_button.clicked.connect(self._run_viewer_list)
+        self.preload_data_thread = Thread(target=self._preload_data, daemon=True)
         self.preload_data_thread.start()
 
+    def _show_data(self):
+        # by_year = self.
+        # self.viewer_list_thread = Thread(target=lambda ._run_viewer_list(x))
+        pass
+
     def _close(self):
-        self.db_wrapper.stop(join=False)
         sys.exit(0)
+
+    def _run_viewer_list(self):
+        if self.year_rb.isChecked():
+            ViewerListApp.run(period=str(self.data_table.selectedItems()[0].text()))
+        else:
+            ViewerListApp.run(company_id=int(self.data_table.selectedItems()[0].text()))
 
     def _r_ui_preload_finished(self):
         self.year_rb.setEnabled(True)
         self.company_rb.setEnabled(True)
         self.label.setVisible(False)
         self.data_table.setEnabled(True)
+        self.show_data_button.setEnabled(True)
 
     def _r_ui_data_option_selected(self):
         self.data_table.clear()

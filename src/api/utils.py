@@ -59,7 +59,7 @@ def chdir(main_file_path: str) -> NoReturn:
         os.chdir(get_parent_directory(os.path.normpath(os.path.join(os.getcwd(), main_file_path))))
 
 
-def format_bytes(bytes_count: float) -> str:
+def format_bytes(bytes_count: int) -> str:
     if bytes_count is not None:
         scaled, power = converters.scale_1024(bytes_count, len(config.BYTES_FORMAT_PREFIXES))
     else:

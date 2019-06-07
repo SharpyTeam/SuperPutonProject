@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import zipfile
 from enum import Enum
 from multiprocessing import Pool
@@ -32,12 +33,12 @@ class BackgroundParseProcess:
     def __init__(self, callback: Callable[[DataGetStatus, int, int], None]):
         self.callback = callback
         self.batch = []
-        self.batch_size = 2
+        self.batch_size = os.cpu_count()
         self.pool = Pool(processes=self.batch_size)
         self.count_added = 0
         self.count_parsed = 0
         self.imap_iterator = None
-        self.fetch_thread = Thread(target=self._fetch_from_pool)
+        self.fetch_thread = Thread(target=self._fetch_from_pool, daemon=True)
         self.finish = False
         self.fetch_event = Event()
 
@@ -49,31 +50,35 @@ class BackgroundParseProcess:
         self.fetch_event.set()
 
     def _fetch_from_pool(self) -> NoReturn:
-        db_wrapper = db.DBWrapper()
-        db_wrapper.start()
+        try:
+            db_wrapper = db.DBWrapper()
+            db_wrapper.start()
 
-        while True:
-            self.fetch_event.wait()
-            self.fetch_event.clear()
-            if self.imap_iterator is None:
-                if self.finish:
-                    break
-                continue
-            for d in self.imap_iterator:
-                if d is None:
+            while True:
+                self.fetch_event.wait()
+                self.fetch_event.clear()
+                if self.imap_iterator is None:
+                    if self.finish:
+                        break
                     continue
-                data_frame, company_name = d
-                company, year, _ = self.batch.pop(0)
-                company.data[year] = CompanyData(company, year, data_frame)
-                company.name = company_name
-                db_wrapper.add_company_async(company)
-                self.count_parsed += 1
-                if self.callback is not None:
-                    self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)
-            self.imap_iterator = None
-            self._push_to_pool()
+                for d in self.imap_iterator:
+                    if d is None:
+                        continue
+                    data_frame, company_name = d
+                    company, year, _ = self.batch.pop(0)
+                    company.data[year] = CompanyData(company, year, data_frame)
+                    company.name = company_name
+                    db_wrapper.add_company_async(company)
+                    self.count_parsed += 1
+                    if self.callback is not None:
+                        self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)
+                self.imap_iterator = None
+                self._push_to_pool()
 
-        db_wrapper.stop()
+            db_wrapper.stop()
+        except (KeyboardInterrupt, SystemExit):
+            print("\n\n\n\nExitting the pool...\n\n\n\n")
+            self.pool.terminate()
 
     def parse_company(self, company, year, xls_path) -> NoReturn:
         self.batch.append((company, year, xls_path))
@@ -93,7 +98,7 @@ class BackgroundParseProcess:
             self.callback(DataGetStatus.FINISHED, self.count_parsed, self.count_added)
 
 
-def download_relevant_data(download_callback: Callable[[DataGetStatus, float, float], None],
+def download_relevant_data(download_callback: Callable[[DataGetStatus, int, int], None],
                            extract_callback: Callable[[DataGetStatus, int, int], None],
                            parse_callback: Callable[[DataGetStatus, int, int], None]) -> NoReturn:
     relevant_page = download_page(config.RELEVANT_PAGE_URL)
@@ -124,7 +129,7 @@ def download_relevant_data(download_callback: Callable[[DataGetStatus, float, fl
                 data_length += len(data)
                 f.write(data)
                 if download_callback is not None:
-                    download_callback(DataGetStatus.DOWNLOADING, data_length, float('inf'))
+                    download_callback(DataGetStatus.DOWNLOADING, data_length, -1)
         f.flush()
 
     zf = zipfile.ZipFile(file_path, 'r')
@@ -155,19 +160,22 @@ def download_relevant_data(download_callback: Callable[[DataGetStatus, float, fl
     zf.close()
     parse_process.finish_parse()
 
-    db_wrapper.add_period_async(year)
+    db_wrapper.add_period(year)
     db_wrapper.stop()
 
 
 def _download_xls(data) -> Tuple[str, str, str]:
-    c_id, year, folder_path, xls_link = data
-    response = requests.get(xls_link, stream=True)
-    file_name = "kstat_" + c_id + ".xls"
-    file_path = os.path.join(folder_path, file_name)
-    with open(file_path, "wb") as f:
-        for data in response.iter_content(chunk_size=4096):
-            f.write(data)
-    return c_id, year, file_path
+    try:
+        c_id, year, folder_path, xls_link = data
+        response = requests.get(xls_link, stream=True)
+        file_name = "kstat_" + c_id + ".xls"
+        file_path = os.path.join(folder_path, file_name)
+        with open(file_path, "wb") as f:
+            for data in response.iter_content(chunk_size=4096):
+                f.write(data)
+        return c_id, year, file_path
+    except (KeyboardInterrupt, SystemExit):
+        sys.exit(0)
 
 
 def download_archive_data(download_callback: Callable[[DataGetStatus, int, int, str], None],

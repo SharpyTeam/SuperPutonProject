@@ -30,4 +30,4 @@ BYTES_FORMAT_PREFIXES = ('', 'К', 'М', 'Г', 'Т', 'П', 'Э', 'З', 'И')
 
 
 class RuntimeConfig:
-    rows_indices_to_sum: List[int] = []
+    rows_indices_to_sum: List[int] = [100]

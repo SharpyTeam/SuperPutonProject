@@ -3,5 +3,6 @@ from api.db import DBWrapper
 
 
 class Runtime:
-    company_manager = CompanyManager(DBWrapper())
+    db_wrapper = DBWrapper()
+    company_manager = CompanyManager(db_wrapper)
 

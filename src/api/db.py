@@ -24,7 +24,7 @@ class DBManager:
         self.connection_async = None
         self.connections_sync = {}
         self.transactions_queue = Queue()
-        self.worker = Thread(target=self._commit_transactions_thread)
+        self.worker = Thread(target=self._commit_transactions_thread, daemon=True)
         self.started = False
 
     def _open_connection_sync(self):
