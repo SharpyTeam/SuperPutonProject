@@ -1,3 +1,6 @@
+from typing import List
+
+
 # URL
 MAIN_URL = "http://cbr.ru"
 RELEVANT_PAGE_URL = "http://cbr.ru/finmarket/account/account_repor_insure/information_ssd/report_individual_ssd" \
@@ -24,3 +27,7 @@ RELEVANT_ZIP_NAME = "relevant.zip"
 # Прочее
 DB_LOCK_TIMEOUT = 10.0
 BYTES_FORMAT_PREFIXES = ('', 'К', 'М', 'Г', 'Т', 'П', 'Э', 'З', 'И')
+
+
+class RuntimeConfig:
+    rows_indices_to_sum: List[int] = []

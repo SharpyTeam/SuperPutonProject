@@ -1,11 +1,9 @@
 import pandas
 from typing import List, Union
 
-from .company import Company
-
 
 class CompanyData:
-    def __init__(self, company: Company, year: str, data: Union[pandas.DataFrame, List[List]] = None):
+    def __init__(self, company, year: str, data: Union[pandas.DataFrame, List[List]] = None):
         self.company = company
         self.year = year
         self.data_frame = data if isinstance(data, pandas.DataFrame) else None
@@ -14,14 +12,6 @@ class CompanyData:
             rows_indices = [data_row[0] for data_row in data]
             rows_list = [data_row[1:] for data_row in data]
             self.data_frame = pandas.DataFrame(rows_list, index=rows_indices)
-
-    def __getitem__(self, key):
-        return self.data_frame.iloc[key[0], key[1]]
-
-    def __setitem__(self, key, value):
-        if self.data_frame.iloc[key[0], key[1]] != value:
-            self.data_frame.iloc[key[0], key[1]] = value
-            self.company.changed = True
 
     def __iter__(self):
         self.index = -1
