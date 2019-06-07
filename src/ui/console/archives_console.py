@@ -1,6 +1,6 @@
 import progressbar as pb
 
-from src.api import web as d
+from api import web as d
 
 bar = None
 

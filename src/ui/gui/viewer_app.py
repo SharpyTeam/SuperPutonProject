@@ -5,8 +5,8 @@ from typing import List, Optional
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
-from src.api import db
-from src.api.models.company import Company
+from api import db
+from api.models.company import Company
 from .design import viewer_design
 
 
@@ -72,14 +72,11 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
         print("Loaded " + str(len(companies)) + " company entries.")
         self.companies_list = companies
 
-    def _period_preload_callback(self, periods: List[str]):
-        print("Loaded " + str(len(periods)) + " period entries.")
-        self.periods_list = periods
-
     def _preload_data(self):
         print("Preloading data...")
-        self.db_wrapper.get_all_periods_async(self._period_preload_callback)
-        self.db_wrapper.get_all_companies_async(self._company_preload_callback)
+        self.periods_list = self.db_wrapper.get_all_periods()
+        print("Loaded " + str(len(self.periods_list)) + " period entries.")
+        self.db_wrapper.get_all_companies_names_async(self._company_preload_callback)
         while self.companies_list is None or self.periods_list is None:
             pass
         self.preload_finished.emit()

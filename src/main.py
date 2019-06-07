@@ -1,14 +1,14 @@
 import os
 
-import src.api.utils as u
-import src.api.web as web
+import api.utils as u
+import api.web as web
 
-from src.ui.console.archives_console import archives_data_dl_callback
-from src.ui.console.relevant_console import actual_data_dl_callback
+from ui.console.archives_console import archives_data_dl_callback
+from ui.console.relevant_console import actual_data_dl_callback
 
-from src.ui.gui.archives_app import ArchivesApp
-from src.ui.gui.relevant_app import RelevantApp
-from src.ui.gui.viewer_app import ViewerApp
+from ui.gui.archives_app import ArchivesApp
+from ui.gui.relevant_app import RelevantApp
+from ui.gui.viewer_app import ViewerApp
 
 bar = None
 
@@ -26,7 +26,7 @@ def parsing_callback(status: web.DataGetStatus, parsed: int, total: int):
 
 
 def main():
-    u.chdir(__file__)
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     u.create_missing()
     print(os.getcwd())
     print("-= Выберите действие =-")

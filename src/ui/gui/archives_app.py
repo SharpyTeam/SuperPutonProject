@@ -4,8 +4,8 @@ from typing import List
 
 from PyQt5 import QtWidgets, QtCore
 from .design import archives_design
-from src.api import web, parsing, utils
-from src.api import config
+from api import web, parsing, utils
+from api import config
 
 
 class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):

@@ -1,7 +1,8 @@
 import sqlite3
 import os.path as path
+import random
 from queue import Queue
-from threading import Thread
+from threading import Thread, get_ident
 from typing import NoReturn, Callable, Optional, Tuple, List, Union
 
 from . import utils
@@ -21,23 +22,29 @@ class DBManager:
             db.executescript(sql)
             db.close()
         self.connection_async = None
-        self.connection_sync = None
+        self.connections_sync = {}
         self.transactions_queue = Queue()
         self.worker = Thread(target=self._commit_transactions_thread)
         self.started = False
 
     def _open_connection_sync(self):
-        if self.connection_sync is None:
-            self.connection_sync = sqlite3.connect(utils.get_db_path(), config.DB_LOCK_TIMEOUT)
+        while len(self.connections_sync) > 10:
+            self._close_connection_sync(random.choice(list(self.connections_sync.keys())))
+        ident = get_ident()
+        if ident not in self.connections_sync:
+            connection = sqlite3.connect(utils.get_db_path(), config.DB_LOCK_TIMEOUT)
+            self.connections_sync[ident] = connection
+        return self.connections_sync[ident]
 
     def _open_connection_async(self):
         if self.connection_async is None:
             self.connection_async = sqlite3.connect(utils.get_db_path(), config.DB_LOCK_TIMEOUT)
 
-    def _close_connection_sync(self):
-        if self.connection_sync is not None:
-            self.connection_sync.commit()
-            self.connection_sync.close()
+    def _close_connection_sync(self, ident):
+        if ident in self.connections_sync:
+            self.connections_sync[ident].commit()
+            self.connections_sync[ident].close()
+            del self.connections_sync[ident]
 
     def _close_connection_async(self):
         if self.connection_async is not None:
@@ -54,7 +61,8 @@ class DBManager:
     def stop(self, join=True):
         if not self.started:
             return
-        self._close_connection_sync()
+        while len(self.connections_sync) > 0:
+            self._close_connection_sync(random.choice(list(self.connections_sync.keys())))
         self.transactions_queue.put(None)
         self.started = False
         if join:
@@ -74,19 +82,21 @@ class DBManager:
         self.transactions_queue.put((transaction, callback))
 
     def commit(self, transaction: Tuple[str, Optional[Tuple]]) -> Optional[List]:
-        cursor = self.connection_sync.cursor()
+        connection = self._open_connection_sync()
+        cursor = connection.cursor()
         query, args = transaction
         args = () if args is None else args
         cursor.execute(query, args)
-        self.connection_sync.commit()
+        connection.commit()
         result = cursor.fetchall()
         return result
 
     def commit_many(self, transaction: Tuple[str, Optional[List[Tuple]]]) -> Optional[List]:
-        cursor = self.connection_sync.cursor()
+        connection = self._open_connection_sync()
+        cursor = connection.cursor()
         query, args = transaction
         cursor.executemany(query, args)
-        self.connection_sync.commit()
+        connection.commit()
         result = cursor.fetchall()
         return result
 
@@ -161,15 +171,21 @@ class DBWrapper(DBManager):
                           callback: Optional[Callable[[Optional[Company]], None]] = None) -> NoReturn:
         query = "SELECT * FROM companies WHERE company_id = ?"
         args = (company_id,)
-        super().commit_async((query, args), lambda rows: self._get_company_data_async(
-            Company(rows[0][0], rows[0][1]), lambda company: callback(company) if callback is not None else None
-        ) if len(rows) == 1 else callback(None) if callback is not None else None)
+
+        def f(rows):
+            company = Company(rows[0][0], rows[0][1], self)
+            self._get_company_data_async(
+                company, None,
+                lambda: callback(company) if callback is not None else None
+            ) if len(rows) == 1 else callback(None) if callback is not None else None
+
+        super().commit_async((query, args), f)
 
     def get_all_companies_async(self, callback: Optional[Callable[[List[Company]], None]] = None) -> NoReturn:
         query = "SELECT * FROM companies"
 
         def cb(rows):
-            companies = [Company(row[0], row[1]) for row in rows]
+            companies = [Company(row[0], row[1], self) for row in rows]
             remaining = [len(companies)]
 
             def dec():
@@ -179,7 +195,7 @@ class DBWrapper(DBManager):
                         callback(companies)
 
             for company in companies:
-                self._get_company_data_async(company, dec)
+                self._get_company_data_async(company, None, dec)
 
         super().commit_async((query, None), cb)
 
@@ -187,7 +203,7 @@ class DBWrapper(DBManager):
         query = "SELECT * FROM companies"
 
         def cb(rows):
-            companies = [Company(row[0], row[1]) for row in rows]
+            companies = [Company(row[0], row[1], self) for row in rows]
             if callback is not None:
                 callback(companies)
 
@@ -246,8 +262,14 @@ class DBWrapper(DBManager):
         else:
             super().commit_many_async((query, batch_args), lambda _: callback() if callback is not None else None)
 
-    def _get_company_data_async(self, company: Company, callback: Optional[Callable[[], None]] = None) -> NoReturn:
-        query = """SELECT * FROM reports WHERE company_id = ?"""
+    def _get_company_data_async(self, company: Company, period: Optional[str] = None,
+                                callback: Optional[Callable[[], None]] = None) -> NoReturn:
+        if period is None:
+            query = """SELECT * FROM reports WHERE company_id = ?"""
+            args = (company.id,)
+        else:
+            query = """SELECT * FROM reports WHERE company_id = ? AND period = ?"""
+            args = (company.id, period)
 
         def parse_result(rows: List[Tuple]):
             periods = {}
@@ -260,24 +282,39 @@ class DBWrapper(DBManager):
                 company.data[key] = CompanyData(company, key, value)
             if callback is not None:
                 callback()
+        super().commit_async((query, args), lambda rows: parse_result(rows))
 
-        super().commit_async((query, (company.id,)), lambda rows: parse_result(rows))
+    def get_company_data(self, company: Company, period: Optional[str] = None) -> NoReturn:
+        if period is None:
+            query = """SELECT * FROM reports WHERE company_id = ?"""
+            args = (company.id,)
+        else:
+            query = """SELECT * FROM reports WHERE company_id = ? AND period = ?"""
+            args = (company.id, period)
 
-    def add_period_async(self, year: str, callback: Optional[Callable[[str], None]] = None) -> NoReturn:
+        rows = super().commit((query, args))
+        periods = {}
+        for row in rows:
+            period = row[1]
+            if period not in periods:
+                periods[period] = []
+            periods[period].append(row[2:])
+        for key, value in periods.items():
+            company.data[key] = CompanyData(company, key, value)
+
+    def add_period(self, year: str) -> NoReturn:
         query = "INSERT OR IGNORE INTO `available_periods` (year) VALUES (?)"
-        args = (year,)
-        super().commit_async((query, args), lambda _: callback(year) if callback is not None else None)
+        super().commit((query, (year,)))
 
-    def remove_period_async(self, year: str, callback: Optional[Callable[[str], None]] = None) -> NoReturn:
+    def remove_period(self, year: str) -> NoReturn:
         query = "DELETE FROM `available_periods` WHERE year = ?"
-        args = (year,)
-        super().commit_async((query, args), lambda _: callback(year) if callback is not None else None)
+        super().commit((query, (year,)))
 
     def is_period_available(self, year: str) -> bool:
         query = "SELECT DISTINCT COUNT() FROM `available_periods` WHERE year = ?"
         return super().commit((query, (year,)))[0][0] > 0
 
-    def get_all_periods_async(self, callback: Optional[Callable[[List[str]], None]] = None) -> NoReturn:
+    def get_all_periods(self) -> List[str]:
         query = "SELECT * FROM available_periods"
-        super().commit_async((query, None), lambda periods: callback(
-            [period[0] for period in periods]) if callback is not None else None)
+        periods = super().commit((query, None))
+        return [period[0] for period in periods]

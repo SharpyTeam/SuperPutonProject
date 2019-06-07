@@ -2,7 +2,7 @@ from typing import NoReturn
 
 import progressbar as pb
 
-from src.api import web as d, config as c
+from api import web as d, config as c
 
 
 class RelevantConsoleApp:

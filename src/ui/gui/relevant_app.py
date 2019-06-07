@@ -4,8 +4,8 @@ from threading import Thread
 from PyQt5 import QtWidgets
 
 from .design import relevant_design
-from src.api import config
-from ...api import web, parsing, utils
+from api import config
+from api import web, parsing, utils
 
 
 class RelevantApp(QtWidgets.QMainWindow, relevant_design.Ui_MainWindow):
