@@ -84,6 +84,11 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
             # unknown data
             return None
 
+    print(frame.iloc[1, 0])
+    print(frame.iloc[2, 0])
+    print(frame.iloc[3, 0])
+    print(frame.iloc[4, 0])
+
     if 'Наименование показателя' in frame.iloc[22, 0]:
         # 2018 format
         actual_columns_mapping = table_columns_mappings['2018']
@@ -110,6 +115,9 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
         try:
             row_index = int(frame.iloc[row, first_row_index[1]])
         except ValueError:
+            continue
+
+        if row_index < 100:
             continue
 
         final_row = []
