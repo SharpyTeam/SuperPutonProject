@@ -11,15 +11,12 @@ from .design import viewer_sum_settings_design
 class ViewerFullTableApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_MainWindow):
     preload_finished = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, period: int, company_id: int):
         super().__init__()
         self.setupUi(self)
         self.preload_finished.connect(self._preload_finished)
         self.string_codes = None
         self.preloading_thread = Thread(target=self._preload_string_codes, daemon=True)
-        self.listWidget.setEnabled(False)
-        self.save_button.setEnabled(False)
-        self.save_button.clicked.connect(self._handle_save_button_click)
         self.exit_button.clicked.connect(self._handle_exit_button_click)
         self.preloading_thread.start()
 
@@ -46,8 +43,6 @@ class ViewerFullTableApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_Ma
         self.close()
 
     @staticmethod
-    def run():
-        app = QtWidgets.QApplication(sys.argv)
-        window = ViewerSumSettingsApp()
+    def run(period: str, company_id: int):
+        window = ViewerFullTableApp(period, company_id)
         window.show()
-        sys.exit(app.exec())

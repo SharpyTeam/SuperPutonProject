@@ -6,6 +6,7 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
 from api.runtime import Runtime
+from ui.gui.viewer_full_table import ViewerFullTableApp
 from ui.gui.viewer_sum_settings import ViewerSumSettingsApp
 from .design import viewer_list_design
 
@@ -33,6 +34,11 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
 
     def _run_sum_settings(self):
         ViewerSumSettingsApp.run()
+
+    def _run_full_table_view(self):
+        # year = self.period if self.by_period else self.data_table.selectedItems()
+        # ViewerFullTableApp.run()
+        pass
 
     def _handle_save_button_click(self):
         self._close()

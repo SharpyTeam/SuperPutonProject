@@ -19,12 +19,18 @@ class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_
         self.preloading_thread = Thread(target=self._preload_string_codes, daemon=True)
         self.listWidget.setEnabled(False)
         self.save_button.setEnabled(False)
+        self.listWidget.itemSelectionChanged.connect(self._handle_selection_changed)
         self.save_button.clicked.connect(self._handle_save_button_click)
         self.exit_button.clicked.connect(self._handle_exit_button_click)
         self.preloading_thread.start()
+        self.save_button.setEnabled(len(self.listWidget.selectedItems()) > 0)
+
+    def _handle_selection_changed(self):
+        self.save_button.setEnabled(len(self.listWidget.selectedItems()) > 0)
 
     def _handle_save_button_click(self):
-        RuntimeConfig.rows_indices_to_sum = [x.text() for x in self.listWidget.selectedItems()]
+        RuntimeConfig.rows_indices_to_sum = [int(x.text()) for x in self.listWidget.selectedItems()]
+        print("Selected rows to sum:\n" + repr(RuntimeConfig.rows_indices_to_sum))
         self._close()
 
     def _handle_exit_button_click(self):
@@ -36,7 +42,7 @@ class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_
         self.listWidget.addItems(self.string_codes)
 
     def _string_codes_fetch_callback(self, string_codes):
-        self.string_codes = [x[0] for x in string_codes]
+        self.string_codes = [str(x[0]) for x in string_codes]
         self.preload_finished.emit()
 
     def _preload_string_codes(self):
