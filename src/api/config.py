@@ -14,8 +14,7 @@ ARCHIVES_PAGES_URLS_SELECTOR = "div.switcher:nth-child(3) > div.switcher-line_wi
                                "span:nth-child(1) > a:nth-child(1) "
 ARCHIVES_YEARS_SELECTOR = "div.switcher:nth-child(3) > div.switcher-line_with-year > div:nth-child(1) > " \
                           "span:nth-child(1) > a:nth-child(1) "
-ARCHIVES_IDS_SELECTOR = ".data > tbody:nth-child(1) > tr > td:nth-child(6)"
-ARCHIVES_XLS_URLS_SELECTOR = ".data > tbody:nth-child(1) > tr > td:nth-child(7) > a:nth-child(1)"
+ARCHIVES_COMPANIES_ROWS_SELECTOR = ".data > tbody:nth-child(1) > tr"
 
 # Название файлов и папок
 DATA_DIR = "data"

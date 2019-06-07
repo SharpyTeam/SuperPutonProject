@@ -206,9 +206,9 @@ def download_archive_data(download_callback: Callable[[DataGetStatus, int, int, 
         os.makedirs(folder_path, exist_ok=True)
 
         download_pool = Pool()
-        for c_id, year, file_path in download_pool.imap_unordered(_download_xls,
-                                                                  [(c_id, year, folder_path, xls_link) for
-                                                                   c_id, xls_link in xls_links.items()]):
+        args = [(c_id, year, folder_path, xls_link) for
+                c_id, xls_link in xls_links.items()]
+        for c_id, year, file_path in download_pool.imap_unordered(_download_xls, args):
             if c_id in companies:
                 company = companies[c_id]
             else:
@@ -226,7 +226,7 @@ def download_archive_data(download_callback: Callable[[DataGetStatus, int, int, 
 
     parse_process.finish_parse()
     for year in added_years:
-        db_wrapper.add_period_async(year)
+        db_wrapper.add_period(year)
     db_wrapper.stop()
 
 

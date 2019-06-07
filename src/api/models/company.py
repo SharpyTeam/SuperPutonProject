@@ -1,5 +1,5 @@
 from api.config import RuntimeConfig
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from .company_data import CompanyData
 
 

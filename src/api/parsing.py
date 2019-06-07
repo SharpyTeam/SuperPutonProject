@@ -24,11 +24,17 @@ def get_available_archive_years(archives_page: str) -> List[str]:
 
 def get_archive_companies_xls_links(archive_year_page: str) -> Dict[str, str]:
     doc = Bs(archive_year_page, 'lxml')
-    ids_list = doc.select(config.ARCHIVES_IDS_SELECTOR)
-    a_list = doc.select(config.ARCHIVES_XLS_URLS_SELECTOR)
-    ids_mapped = [str(x.string) for x in ids_list]
-    a_mapped = list(map(lambda a: config.MAIN_URL + a['href'], a_list))
-    return dict(zip(ids_mapped, a_mapped))
+    companies_rows = doc.select(config.ARCHIVES_COMPANIES_ROWS_SELECTOR)
+    d = {}
+    for row in companies_rows:
+        td = row.find_all('td')
+        if len(td) < 7:
+            continue
+        a = td[6].find('a')
+        if a is None:
+            continue
+        d[str(td[5].string)] = config.MAIN_URL + a['href']
+    return d
 
 
 def get_relevant_archive_link(relevant_page: str) -> str:
