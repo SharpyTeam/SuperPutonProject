@@ -1,12 +1,12 @@
 import re
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 import math
 import pandas as p
 import xlrd
 from bs4 import BeautifulSoup as Bs
 
-from src import config
+from . import config
 
 
 def get_archive_years_links(archives_page: str) -> Dict[str, str]:
@@ -14,6 +14,12 @@ def get_archive_years_links(archives_page: str) -> Dict[str, str]:
     a_list = doc.select(config.ARCHIVES_PAGES_URLS_SELECTOR)
     year_list = [re.search('[0-9]+', str(e.string)).group(0) for e in doc.select(config.ARCHIVES_YEARS_SELECTOR)]
     return dict(zip(year_list, list(map(lambda a: config.MAIN_URL + a['href'], a_list))))
+
+
+def get_available_archive_years(archives_page: str) -> List[str]:
+    doc = Bs(archives_page, 'lxml')
+    year_list = [re.search('[0-9]+', str(e.string)).group(0) for e in doc.select(config.ARCHIVES_YEARS_SELECTOR)]
+    return year_list
 
 
 def get_archive_companies_xls_links(archive_year_page: str) -> Dict[str, str]:

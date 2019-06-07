@@ -7,7 +7,7 @@ from typing import NoReturn, Callable, Optional, Tuple, List, Union
 from . import utils
 from .models.company import Company
 from .models.company_data import CompanyData
-from .. import config
+from . import config
 
 
 class DBManager:
@@ -157,7 +157,8 @@ class DBWrapper(DBManager):
             [cd for c in companies for cd in c.data.values()], lambda: callback() if callback is not None else None
         ))
 
-    def get_company_async(self, company_id: int, callback: Optional[Callable[[Optional[Company]], None]] = None) -> NoReturn:
+    def get_company_async(self, company_id: int,
+                          callback: Optional[Callable[[Optional[Company]], None]] = None) -> NoReturn:
         query = "SELECT * FROM companies WHERE company_id = ?"
         args = (company_id,)
         super().commit_async((query, args), lambda rows: self._get_company_data_async(
@@ -179,6 +180,16 @@ class DBWrapper(DBManager):
 
             for company in companies:
                 self._get_company_data_async(company, dec)
+
+        super().commit_async((query, None), cb)
+
+    def get_all_companies_names_async(self, callback: Optional[Callable[[List[Company]], None]] = None) -> NoReturn:
+        query = "SELECT * FROM companies"
+
+        def cb(rows):
+            companies = [Company(row[0], row[1]) for row in rows]
+            if callback is not None:
+                callback(companies)
 
         super().commit_async((query, None), cb)
 
@@ -252,12 +263,12 @@ class DBWrapper(DBManager):
 
         super().commit_async((query, (company.id,)), lambda rows: parse_result(rows))
 
-    def add_period_async(self, year: str, callback: Optional[Callable[[str], None]] = None):
+    def add_period_async(self, year: str, callback: Optional[Callable[[str], None]] = None) -> NoReturn:
         query = "INSERT OR IGNORE INTO `available_periods` (year) VALUES (?)"
         args = (year,)
         super().commit_async((query, args), lambda _: callback(year) if callback is not None else None)
 
-    def remove_period_async(self, year: str, callback: Optional[Callable[[str], None]] = None):
+    def remove_period_async(self, year: str, callback: Optional[Callable[[str], None]] = None) -> NoReturn:
         query = "DELETE FROM `available_periods` WHERE year = ?"
         args = (year,)
         super().commit_async((query, args), lambda _: callback(year) if callback is not None else None)

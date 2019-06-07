@@ -16,7 +16,7 @@ class CompanyManager:
 
     def get_companies(self, ids: Tuple = None) -> List[Company]:
         if ids is not None:
-            return [self.companies[id] for id in ids if id in self.companies]
+            return [self.companies[c_id] for c_id in ids if c_id in self.companies]
         else:
             return list(self.companies.values())
 
@@ -28,7 +28,7 @@ class CompanyManager:
         del self.companies[company.id]
         self.companies_to_remove.append(company)
 
-    def load_from_db(self, callback: Optional[Callable[[], None]]):
+    def load_from_db(self, callback: Optional[Callable[[], None]]) -> NoReturn:
         self.db_wrapper.start()
 
         def loaded(companies: List[Company]):
@@ -38,7 +38,7 @@ class CompanyManager:
 
         self.db_wrapper.get_all_companies_async(loaded)
 
-    def commit_to_db(self, callback: Optional[Callable[[], None]]):
+    def commit_to_db(self, callback: Optional[Callable[[], None]]) -> NoReturn:
         self.db_wrapper.start()
         self.db_wrapper.remove_company_async(
             self.companies_to_remove,

@@ -3,8 +3,9 @@ import shutil
 from os import path
 from typing import NoReturn
 
-from src import config
-from . import db
+from python_utils import converters
+
+from . import config
 
 
 def get_working_directory() -> str:
@@ -49,3 +50,18 @@ def get_parent_directory(directory: str, levels: int = 1) -> str:
     for _ in range(levels):
         directory = os.path.dirname(directory)
     return directory
+
+
+def chdir(main_file_path: str) -> NoReturn:
+    if os.path.isabs(main_file_path):
+        os.chdir(get_parent_directory(os.path.normpath(main_file_path), levels=1))
+    else:
+        os.chdir(get_parent_directory(os.path.normpath(os.path.join(os.getcwd(), main_file_path))))
+
+
+def format_bytes(bytes_count: float) -> str:
+    if bytes_count is not None:
+        scaled, power = converters.scale_1024(bytes_count, len(config.BYTES_FORMAT_PREFIXES))
+    else:
+        scaled = power = 0
+    return "{scaled:1.5f} {prefix}Б".format(scaled=scaled, prefix=config.BYTES_FORMAT_PREFIXES[power])

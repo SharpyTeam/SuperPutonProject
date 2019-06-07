@@ -23,3 +23,4 @@ RELEVANT_ZIP_NAME = "relevant.zip"
 
 # Прочее
 DB_LOCK_TIMEOUT = 10.0
+BYTES_FORMAT_PREFIXES = ('', 'К', 'М', 'Г', 'Т', 'П', 'Э', 'З', 'И')

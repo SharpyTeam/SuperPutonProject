@@ -9,7 +9,7 @@ from typing import Callable, NoReturn, Optional, Tuple
 import pandas as p
 import requests
 
-from src import config
+from . import config
 from . import utils, parsing, db
 from .models.company import Company
 from .models.company_data import CompanyData
@@ -32,7 +32,7 @@ class BackgroundParseProcess:
     def __init__(self, callback: Callable[[DataGetStatus, int, int], None]):
         self.callback = callback
         self.batch = []
-        self.batch_size = os.cpu_count()
+        self.batch_size = 2
         self.pool = Pool(processes=self.batch_size)
         self.count_added = 0
         self.count_parsed = 0
@@ -172,6 +172,7 @@ def _download_xls(data) -> Tuple[str, str, str]:
 
 def download_archive_data(download_callback: Callable[[DataGetStatus, int, int, str], None],
                           parse_callback: Callable[[DataGetStatus, int, int], None]) -> NoReturn:
+    print("123")
     companies = {}
     years_links = parsing.get_archive_years_links(download_page(config.ARCHIVES_PAGE_URL))
     parse_process = BackgroundParseProcess(parse_callback)
