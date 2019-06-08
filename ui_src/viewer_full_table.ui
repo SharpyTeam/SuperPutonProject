@@ -39,7 +39,14 @@
      </widget>
     </item>
     <item>
-     <widget class="QTableWidget" name="data_table"/>
+     <widget class="QTableWidget" name="data_table">
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+     </widget>
     </item>
     <item>
      <widget class="Line" name="line">

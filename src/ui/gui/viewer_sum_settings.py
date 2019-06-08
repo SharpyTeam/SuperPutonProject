@@ -30,7 +30,6 @@ class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_
 
     def _handle_save_button_click(self):
         RuntimeConfig.rows_indices_to_sum = [int(x.text()) for x in self.listWidget.selectedItems()]
-        print("Selected rows to sum:\n" + repr(RuntimeConfig.rows_indices_to_sum))
         self._close()
 
     def _handle_exit_button_click(self):

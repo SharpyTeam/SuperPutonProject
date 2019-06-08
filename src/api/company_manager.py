@@ -19,23 +19,23 @@ class CompanyManager:
         else:
             return list(self.companies.values())
 
-    def get_company_diagram_for_periods(self, column: int, company_id: int, periods: Optional[List[str]] = None):
+    def get_company_diagram_data_for_periods(self, column: int, company_id: int, periods: Optional[List[str]] = None):
         if periods is None:
             periods = self.db_wrapper.get_all_periods()
         company = self.get_company(company_id)
         return [company.get_period_data_summed(period)[column] for period in periods
                 if company.get_period_data_summed(period) is not None]
 
-    def get_companies_diagram_for_period(self, column, period: str, companies_ids: Optional[List[str]] = None):
+    def get_companies_diagram_data_for_period(self, column, period: str, companies_ids: Optional[List[int]] = None):
         companies = self.get_companies(companies_ids)
         return [company.get_period_data_summed(period)[column] for company in companies
                 if company.get_period_data_summed(period) is not None]
 
     def get_company_standard_deviation_for_periods(self, column: int, company_id: int, periods: Optional[List[str]] = None):
-        return list(numpy.std(self.get_company_diagram_for_periods(column, company_id, periods)))
+        return numpy.std(self.get_company_diagram_data_for_periods(column, company_id, periods))
 
-    def get_companies_standard_deviation_for_period(self, column, period: str, companies_ids: Optional[List[str]] = None):
-        return list(numpy.std(self.get_companies_diagram_for_period(column, period, companies_ids)))
+    def get_companies_standard_deviation_for_period(self, column, period: str, companies_ids: Optional[List[int]] = None):
+        return numpy.std(self.get_companies_diagram_data_for_period(column, period, companies_ids))
 
     def load_from_db(self, callback: Optional[Callable[[], None]]) -> NoReturn:
         self.db_wrapper.start()

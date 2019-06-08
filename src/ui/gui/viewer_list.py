@@ -5,6 +5,10 @@ from typing import Optional
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+from api import parsing
 from api.runtime import Runtime
 from ui.gui.viewer_full_table import ViewerFullTableApp
 from ui.gui.viewer_sum_settings import ViewerSumSettingsApp
@@ -24,21 +28,99 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
         self.data = None
         self.preload_finished.connect(self._preload_ended)
         self.sum_settings_button.clicked.connect(self._run_sum_settings)
+        self.show_stats_button.clicked.connect(self._run_diagram_view)
+        self.show_table_button.clicked.connect(self._run_full_table_view)
         self.preloading_thread = Thread(target=self._preload_all, daemon=True)
         self.data_table.setEnabled(False)
         self.show_stats_button.setEnabled(False)
         self.show_table_button.setEnabled(False)
         self.sum_settings_button.setEnabled(False)
         self.exit_button.clicked.connect(self._handle_exit_button_click)
+        self.selected_column = 0
+        self.selected_rows = []
+        self.data_table.itemSelectionChanged.connect(self._handle_selection_changed)
         self.preloading_thread.start()
+        self.warning_label_2.setVisible(False)
+
+    def _warning_message(self):
+        self.show_stats_button.setEnabled(False)
+        self.show_stats_button.setText("Показать диаграмму для выбранного столбца (выберите столбец...)")
+        self.std_label.setText("Здесь будет показано среднее квадратическое отклонение. Выберите столбец.")
+
+    def _handle_selection_changed(self):
+        if len(self.data_table.selectedItems()) == 0:
+            self._warning_message()
+            self.show_table_button.setText("Показать полную таблицу (выберите строку!)")
+            self.show_table_button.setEnabled(False)
+            return
+
+        if len(set([i.column() for i in self.data_table.selectedItems()])) > 1:
+            self.warning_label_2.setVisible(True)
+            self.show_stats_button.setDisabled(True)
+            return
+        else:
+            self.show_stats_button.setDisabled(False)
+            self.warning_label_2.setVisible(False)
+
+        if len(set([i.row() for i in self.data_table.selectedItems()])) > 1:
+            self.show_table_button.setEnabled(False)
+            self.show_table_button.setText("Показать полную таблицу (выберите одну строку!)")
+        else:
+            self.show_table_button.setEnabled(True)
+            self.show_table_button.setText("Показать полную таблицу")
+
+        self.selected_column = self.data_table.selectedItems()[0].column()
+        self.selected_rows = [i.row() for i in self.data_table.selectedItems()]
+        self.selected_column -= 2 if self.by_period else 1
+        if self.selected_column < 0:
+            self._warning_message()
+            return
+        self.show_stats_button.setEnabled(True)
+        self.show_stats_button.setText("Показать диаграмму для выбранных ячеек")
+        if self.by_period:
+            std = Runtime.company_manager.get_companies_standard_deviation_for_period(self.selected_column, self.period)
+        else:
+            std = Runtime.company_manager.get_company_standard_deviation_for_periods(self.selected_column,
+                                                                                     self.company_id)
+
+        self.std_label.setText("Среднеквадратичное отклонение по всему столбцу: " + str(std))
+
+    def _run_diagram_view(self):
+        fig, ax = plt.subplots(figsize=(3, 3), subplot_kw=dict(aspect="equal"))
+
+        if self.by_period:
+            companies_ids = []
+            for i in self.data_table.selectedItems():
+                companies_ids.append(int(self.data[i.row()][0]))
+            data = Runtime.company_manager.get_companies_diagram_data_for_period(self.selected_column, self.period,
+                                                                                 companies_ids)
+            labels = [l.name for l in Runtime.company_manager.get_companies(tuple(companies_ids))]
+
+        else:
+            periods = []
+            for i in self.data_table.selectedItems():
+                periods.append(str(self.data[i.row()][0]))
+            data = Runtime.company_manager.get_company_diagram_data_for_periods(self.selected_column,
+                                                                                self.company_id, periods)
+            labels = periods
+        ax.pie(data, labels=labels)
+        ax.axis('equal')
+        # plt.setp(autotexts, size=8, weight="bold")
+        ax.set_title("Диаграмма по выделенным данным")
+        plt.show()
 
     def _run_sum_settings(self):
         ViewerSumSettingsApp.run()
 
     def _run_full_table_view(self):
-        # year = self.period if self.by_period else self.data_table.selectedItems()
-        # ViewerFullTableApp.run()
-        pass
+        if self.by_period:
+            company_id = (int(self.data[self.data_table.selectedItems()[0].row()][0]))
+            year = self.period
+        else:
+            company_id = self.company_id
+            year = (str(self.data[self.data_table.selectedItems()[0].row()][0]))
+        print(year, company_id)
+        ViewerFullTableApp.run(year, company_id)
 
     def _handle_save_button_click(self):
         self._close()
@@ -60,6 +142,8 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
                          for period in available_periods if self.company.get_period_data_summed(period) is not None]
             self.label.setText("Данные по компании \n" + self.company.name + "\nза всё время")
         self.data_table.setColumnCount(len(self.data[0]) if len(self.data) > 0 else 1)
+        self.data_table.setHorizontalHeaderLabels(
+            (["№ компании", "Название компании"] if self.by_period else ["Год"]) + parsing.table_columns)
         self.data_table.setRowCount(len(self.data))
         for i in range(len(self.data)):
             for j in range(len(self.data[i])):

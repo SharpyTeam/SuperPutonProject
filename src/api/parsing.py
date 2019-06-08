@@ -34,6 +34,7 @@ def get_archive_companies_xls_links(archive_year_page: str) -> Dict[str, str]:
         if a is None:
             continue
         d[str(td[5].string)] = config.MAIN_URL + a['href']
+    print(repr(d))
     return d
 
 
@@ -84,17 +85,12 @@ def get_data_frame_and_company_name_from_xls(path: str) -> Optional[Tuple[p.Data
             # unknown data
             return None
 
-    print(frame.iloc[1, 0])
-    print(frame.iloc[2, 0])
-    print(frame.iloc[3, 0])
-    print(frame.iloc[4, 0])
-
-    if 'Наименование показателя' in frame.iloc[22, 0]:
+    if 'Наименование показателя' in str(frame.iloc[22, 0]):
         # 2018 format
         actual_columns_mapping = table_columns_mappings['2018']
         first_row_index = (28, 1)
         company_name = frame.iloc[13, 3]
-    elif 'Наименование показателя' in frame.iloc[14, 0]:
+    elif 'Наименование показателя' in str(frame.iloc[14, 0]):
         # 2016-2017 format
         actual_columns_mapping = table_columns_mappings['2016']
         first_row_index = (19, 2)

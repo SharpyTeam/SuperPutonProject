@@ -25,9 +25,12 @@ class Company:
             return None
         summed = []
         for index in RuntimeConfig.rows_indices_to_sum:
-            data_row = list(period.data_frame.loc[index])
-            if len(summed) == 0:
-                summed = data_row
-            for i in range(len(summed)):
-                summed[i] += data_row[i]
+            try:
+                data_row = list(period.data_frame.loc[index])
+                if len(summed) == 0:
+                    summed = data_row
+                for i in range(len(summed)):
+                    summed[i] += data_row[i]
+            except KeyError:
+                continue
         return tuple(summed) if len(summed) > 0 else None

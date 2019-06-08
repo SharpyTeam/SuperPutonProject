@@ -69,6 +69,7 @@ class BackgroundParseProcess:
                     company.data[year] = CompanyData(company, year, data_frame)
                     company.name = company_name
                     db_wrapper.add_company_async(company)
+                    print(company.id, company.name)
                     self.count_parsed += 1
                     if self.callback is not None:
                         self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)

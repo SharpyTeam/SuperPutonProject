@@ -39,10 +39,38 @@
      </widget>
     </item>
     <item>
-     <widget class="QTableWidget" name="data_table"/>
+     <widget class="QTableWidget" name="data_table">
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::MultiSelection</enum>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="std_label">
+      <property name="text">
+       <string>Здесь будет показано среднее квадратическое отклонение. Выберите столбец.</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="warning_label_2">
+      <property name="text">
+       <string notr="true">Невозможно показать диаграмму. Выберите элементы, находящиеся в одном и том же столбце.</string>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="Line" name="line_2">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="Line" name="line_4">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
@@ -58,7 +86,7 @@
     <item>
      <widget class="QPushButton" name="show_stats_button">
       <property name="text">
-       <string>Выбрать столбец для построения диаграммы и вычисления статистики</string>
+       <string>Показать диаграмму для выбранного столбца (выберите столбец...)</string>
       </property>
      </widget>
     </item>
