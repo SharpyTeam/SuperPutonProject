@@ -34,7 +34,6 @@ def get_archive_companies_xls_links(archive_year_page: str) -> Dict[str, str]:
         if a is None:
             continue
         d[str(td[5].string)] = config.MAIN_URL + a['href']
-    print(repr(d))
     return d
 
 

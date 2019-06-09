@@ -20,6 +20,7 @@ class RelevantApp(QtWidgets.QMainWindow, relevant_design.Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
+        RelevantApp.wnd = self
         self.setupUi(self)
         self.is_downloading = False
         self.parseProgressBar.setVisible(False)

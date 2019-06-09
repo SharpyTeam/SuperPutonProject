@@ -13,6 +13,7 @@ class ViewerFullTableApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_Ma
 
     def __init__(self):
         super().__init__()
+        ViewerFullTableApp.wnd = self
         self.setupUi(self)
         self.preload_finished.connect(self._preload_finished)
         self.string_codes = None
@@ -48,6 +49,6 @@ class ViewerFullTableApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_Ma
     @staticmethod
     def run():
         app = QtWidgets.QApplication(sys.argv)
-        window = ViewerSumSettingsApp()
+        window = ViewerFullTableApp()
         window.show()
         sys.exit(app.exec())

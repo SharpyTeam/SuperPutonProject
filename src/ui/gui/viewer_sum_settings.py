@@ -13,6 +13,7 @@ class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_
 
     def __init__(self):
         super().__init__()
+        ViewerSumSettingsApp.wnd = self
         self.setupUi(self)
         self.preload_finished.connect(self._preload_finished)
         self.string_codes = None

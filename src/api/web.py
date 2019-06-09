@@ -27,12 +27,16 @@ class DataGetStatus(Enum):
 
 class BackgroundParseProcess:
     @staticmethod
-    def parse(xls_path: str) -> Optional[Tuple[p.DataFrame, str]]:
-        return parsing.get_data_frame_and_company_name_from_xls(xls_path)
+    def parse(d: Tuple[int, str]) -> Optional[Tuple[int, p.DataFrame, str]]:
+        company_id, xls_path = d
+        parsed = parsing.get_data_frame_and_company_name_from_xls(xls_path)
+        if parsed is None:
+            parsed = (None, None)
+        return (company_id,) + parsed
 
     def __init__(self, callback: Callable[[DataGetStatus, int, int], None]):
         self.callback = callback
-        self.batch = []
+        self.batch = {}
         self.batch_size = os.cpu_count()
         self.pool = Pool(processes=self.batch_size)
         self.count_added = 0
@@ -46,7 +50,7 @@ class BackgroundParseProcess:
         if (len(self.batch) < self.batch_size and not self.finish) or self.imap_iterator is not None:
             return
         if len(self.batch) > 0:
-            self.imap_iterator = self.pool.imap(BackgroundParseProcess.parse, [x[2] for x in self.batch])
+            self.imap_iterator = self.pool.imap(BackgroundParseProcess.parse, [(c_id, v[2]) for c_id, v in self.batch.items()])
         self.fetch_event.set()
 
     def _fetch_from_pool(self) -> NoReturn:
@@ -62,14 +66,13 @@ class BackgroundParseProcess:
                         break
                     continue
                 for d in self.imap_iterator:
-                    if d is None:
-                        continue
-                    data_frame, company_name = d
-                    company, year, _ = self.batch.pop(0)
-                    company.data[year] = CompanyData(company, year, data_frame)
-                    company.name = company_name
-                    db_wrapper.add_company_async(company)
-                    print(company.id, company.name)
+                    c_id, data_frame, company_name = d
+                    company, year, _ = self.batch[c_id]
+                    del self.batch[c_id]
+                    if data_frame is not None:
+                        company.data[year] = CompanyData(company, year, data_frame)
+                        company.name = company_name
+                        db_wrapper.add_company_async(company)
                     self.count_parsed += 1
                     if self.callback is not None:
                         self.callback(DataGetStatus.PARSING, self.count_parsed, self.count_added)
@@ -78,11 +81,10 @@ class BackgroundParseProcess:
 
             db_wrapper.stop()
         except (KeyboardInterrupt, SystemExit):
-            print("\n\n\n\nExitting the pool...\n\n\n\n")
             self.pool.terminate()
 
     def parse_company(self, company, year, xls_path) -> NoReturn:
-        self.batch.append((company, year, xls_path))
+        self.batch[company.id] = (company, year, xls_path)
         self.count_added += 1
         self._push_to_pool()
 
@@ -181,7 +183,6 @@ def _download_xls(data) -> Tuple[str, str, str]:
 
 def download_archive_data(download_callback: Callable[[DataGetStatus, int, int, str], None],
                           parse_callback: Callable[[DataGetStatus, int, int], None]) -> NoReturn:
-    print("123")
     companies = {}
     years_links = parsing.get_archive_years_links(download_page(config.ARCHIVES_PAGE_URL))
     parse_process = BackgroundParseProcess(parse_callback)

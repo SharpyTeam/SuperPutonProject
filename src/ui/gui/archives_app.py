@@ -18,6 +18,7 @@ class ArchivesApp(QtWidgets.QMainWindow, archives_design.Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
+        ArchivesApp.wnd = self
         self.setupUi(self)
         self.is_downloading = False
         self.dlProgressBar.setVisible(False)

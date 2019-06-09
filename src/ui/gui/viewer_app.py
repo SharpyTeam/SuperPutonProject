@@ -17,6 +17,7 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
+        ViewerApp.wnd = self
         self.db_wrapper = db.DBWrapper()
         self.db_wrapper.start()
         self.preload_finished.connect(self._r_ui_preload_finished)

@@ -12,8 +12,6 @@ from ui.gui.archives_app import ArchivesApp
 from ui.gui.relevant_app import RelevantApp
 from ui.gui.viewer_app import ViewerApp
 
-import signal
-
 bar = None
 
 previous_status = web.DataGetStatus.STARTED
@@ -61,10 +59,4 @@ def main():
 
 
 if __name__ == "__main__":
-    def keyboard_interrupt_handler(signal, frame):
-        print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal))
-        exit(0)
-
-
-    signal.signal(signal.SIGTERM, keyboard_interrupt_handler)
     main()
