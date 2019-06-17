@@ -5,4 +5,5 @@ from api.db import DBWrapper
 class Runtime:
     db_wrapper = DBWrapper()
     company_manager = CompanyManager(db_wrapper)
+    is_windows = None
 

@@ -35,11 +35,6 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
         self.preload_data_thread = Thread(target=self._preload_data, daemon=True)
         self.preload_data_thread.start()
 
-    def _show_data(self):
-        # by_year = self.
-        # self.viewer_list_thread = Thread(target=lambda ._run_viewer_list(x))
-        pass
-
     def _close(self):
         sys.exit(0)
 
@@ -83,13 +78,10 @@ class ViewerApp(QtWidgets.QMainWindow, viewer_design.Ui_MainWindow):
         self.data_table.resizeColumnsToContents()
 
     def _company_preload_callback(self, companies: List[Company]):
-        print("Loaded " + str(len(companies)) + " company entries.")
         self.companies_list = companies
 
     def _preload_data(self):
-        print("Preloading data...")
         self.periods_list = self.db_wrapper.get_all_periods()
-        print("Loaded " + str(len(self.periods_list)) + " period entries.")
         self.db_wrapper.get_all_companies_names_async(self._company_preload_callback)
         while self.companies_list is None or self.periods_list is None:
             pass

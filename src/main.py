@@ -1,6 +1,11 @@
 import os
+import sys
+
 
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from api.runtime import Runtime
+
 
 import api.utils as u
 import api.web as web
@@ -20,7 +25,7 @@ actual_dl_status = None
 actual_parse_status = None
 
 
-def parsing_callback(status: web.DataGetStatus, parsed: int, total: int):
+def parsing_callback(status: web.DataGetStatus):
     global actual_parse_status
     actual_parse_status = web.DataGetStatus
     if status == web.DataGetStatus.FINISHED:
@@ -29,6 +34,14 @@ def parsing_callback(status: web.DataGetStatus, parsed: int, total: int):
 
 def main():
     u.create_missing()
+
+    if sys.version_info < (3, 7, 3):
+        print("-----------------")
+        print("Проект написан на Python 3.7.3 и может работать некорректно на более старых версиях Python.")
+        print("Ваша версия Python: " + ".".join(list(map(str, sys.version_info))[:3]))
+        print("-----------------\n")
+
+    Runtime.is_windows = sys.platform == 'win32'
     print("-= Выберите действие =-")
     print("1. Скачать актуальные данные")
     print("2. Скачать архивные данные")
@@ -41,13 +54,12 @@ def main():
         print("Скачиваются актуальные данные")
         web.download_relevant_data(lambda x, y, z: actual_data_dl_callback(x, y, z),
                                    lambda x, y, z: None,
-                                   lambda x, y, z: parsing_callback(x, y, z))
+                                   lambda x, y, z: parsing_callback(x))
     elif i.startswith('2'):
         u.clean_tmp()
         print('Скачиваются архивные данные: ')
-        # TODO use second callback
         web.download_archive_data(lambda x, y, z, w: archives_data_dl_callback(x, y, z, w),
-                                  lambda x, y, z: parsing_callback(x, y, z))  # print("L2:", x, y, z))
+                                  lambda x, y, z: parsing_callback(x))
     elif i.startswith('3'):
         RelevantApp.run()
     elif i.startswith('4'):

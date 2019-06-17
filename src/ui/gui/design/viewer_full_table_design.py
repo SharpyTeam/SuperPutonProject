@@ -32,10 +32,15 @@ class Ui_MainWindow(object):
         self.line_3.setObjectName("line_3")
         self.verticalLayout.addWidget(self.line_3)
         self.data_table = QtWidgets.QTableWidget(self.centralwidget)
+        self.data_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.data_table.setObjectName("data_table")
         self.data_table.setColumnCount(0)
         self.data_table.setRowCount(0)
+        self.data_table.verticalHeader().setVisible(False)
         self.verticalLayout.addWidget(self.data_table)
+        self.export_button = QtWidgets.QPushButton(self.centralwidget)
+        self.export_button.setObjectName("export_button")
+        self.verticalLayout.addWidget(self.export_button)
         self.line = QtWidgets.QFrame(self.centralwidget)
         self.line.setFrameShape(QtWidgets.QFrame.HLine)
         self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
@@ -59,6 +64,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         self.label.setText(_translate("MainWindow", "Подождите, загрузка..."))
+        self.export_button.setText(_translate("MainWindow", "Экспортировать эту таблицу"))
         self.exit_button.setText(_translate("MainWindow", "Назад"))
 
 

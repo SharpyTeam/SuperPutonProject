@@ -49,6 +49,13 @@
      </widget>
     </item>
     <item>
+     <widget class="QPushButton" name="export_button">
+      <property name="text">
+       <string>Экспортировать эту таблицу</string>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="Line" name="line">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>

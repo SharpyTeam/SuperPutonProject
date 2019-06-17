@@ -1,12 +1,9 @@
-import sys
 from threading import Thread
 from typing import Optional
 
+import matplotlib.pyplot as plt
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
-
-import numpy as np
-import matplotlib.pyplot as plt
 
 from api import parsing
 from api.runtime import Runtime
@@ -20,6 +17,7 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
 
     def __init__(self, period: Optional[str] = None, company_id: Optional[int] = None):
         super().__init__()
+        ViewerListApp.wnd = self
         self.by_period = period is not None
         self.period = period
         self.company_id = company_id
@@ -105,12 +103,11 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
             labels = periods
         ax.pie(data, labels=labels)
         ax.axis('equal')
-        # plt.setp(autotexts, size=8, weight="bold")
         ax.set_title("Диаграмма по выделенным данным")
         plt.show()
 
     def _run_sum_settings(self):
-        ViewerSumSettingsApp.run()
+        ViewerSumSettingsApp.run(self)
 
     def _run_full_table_view(self):
         if self.by_period:
@@ -119,7 +116,6 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
         else:
             company_id = self.company_id
             year = (str(self.data[self.data_table.selectedItems()[0].row()][0]))
-        print(year, company_id)
         ViewerFullTableApp.run(year, company_id)
 
     def _handle_save_button_click(self):
@@ -163,7 +159,5 @@ class ViewerListApp(QtWidgets.QMainWindow, viewer_list_design.Ui_MainWindow):
 
     @staticmethod
     def run(period: Optional[str] = None, company_id: Optional[int] = None):
-        # app = QtWidgets.QApplication(sys.argv)
         window = ViewerListApp(period=period, company_id=company_id)
         window.show()
-        # sys.exit(app.exec())

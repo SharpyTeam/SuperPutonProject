@@ -1,5 +1,6 @@
 import os
 import shutil
+from datetime import datetime
 from os import path
 from typing import NoReturn
 
@@ -16,6 +17,10 @@ def get_tmp_path() -> str:
     return path.join(get_working_directory(), config.DATA_DIR, config.TMP_DIR)
 
 
+def get_exports_path() -> str:
+    return path.join(get_working_directory(), config.DATA_DIR, config.EXPORTS_DIR)
+
+
 def get_data_path() -> str:
     return path.join(get_working_directory(), config.DATA_DIR)
 
@@ -30,6 +35,7 @@ def get_schema_path() -> str:
 
 def create_missing() -> NoReturn:
     os.makedirs(get_tmp_path(), exist_ok=True)
+    os.makedirs(get_exports_path(), exist_ok=True)
 
 
 def clean_tmp() -> NoReturn:
@@ -65,3 +71,7 @@ def format_bytes(bytes_count: int) -> str:
     else:
         scaled = power = 0
     return "{scaled:1.5f} {prefix}Б".format(scaled=scaled, prefix=config.BYTES_FORMAT_PREFIXES[power])
+
+
+def get_file_name_for_export(company_id: int, year: str) -> str:
+    return "Данные_" + str(company_id) + "_" + year + "_" + datetime.now().strftime('%d.%m.%Y_%H-%M-%S') + ".xlsx"

@@ -19,6 +19,7 @@ ARCHIVES_COMPANIES_ROWS_SELECTOR = ".data > tbody:nth-child(1) > tr"
 # Название файлов и папок
 DATA_DIR = "data"
 TMP_DIR = "tmp"
+EXPORTS_DIR = "exports"
 DB_FILENAME = "data.db"
 DB_SCHEMA_FILENAME = "schema.sql"
 RELEVANT_ZIP_NAME = "relevant.zip"

@@ -11,8 +11,9 @@ from .design import viewer_sum_settings_design
 class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_MainWindow):
     preload_finished = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
+        self.setParent(parent)
         ViewerSumSettingsApp.wnd = self
         self.setupUi(self)
         self.preload_finished.connect(self._preload_finished)
@@ -53,6 +54,6 @@ class ViewerSumSettingsApp(QtWidgets.QMainWindow, viewer_sum_settings_design.Ui_
         self.close()
 
     @staticmethod
-    def run():
-        window = ViewerSumSettingsApp()
+    def run(parent):
+        window = ViewerSumSettingsApp(parent)
         window.show()
